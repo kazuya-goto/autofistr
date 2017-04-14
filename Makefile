@@ -47,8 +47,8 @@ ifeq ($(COMPILER), INTEL)
       endif
     endif
   endif
-  BLASLIB = -L$(INTELDIR)/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -L$(INTELDIR)/lib/intel64 -liomp5
-  LAPACKLIB = -L$(INTELDIR)/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -L$(INTELDIR)/lib/intel64 -liomp5
+  BLASLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
+  LAPACKLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
   ifeq ($(MPI), OpenMPI)
     MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
     MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
@@ -57,7 +57,7 @@ ifeq ($(COMPILER), INTEL)
     PACKAGES += $(OPENMPI).tar.bz2
     PKG_DIRS += $(OPENMPI)
     TARGET += $(PREFIX)/.openmpi
-    SCALAPACKLIB = -L$(INTELDIR)/mkl/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
   else
     ifeq ($(MPI), MPICH)
       MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
@@ -67,14 +67,14 @@ ifeq ($(COMPILER), INTEL)
       PACKAGES += $(MPICH).tar.gz
       PKG_DIRS += $(MPICH)
       TARGET += $(PREFIX)/.mpich
-      SCALAPACKLIB = -L$(INTELDIR)/mkl/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
     else
       ifeq ($(MPI), IMPI)
         MPICC = mpiicc
         MPICXX = mpiicpc
         MPIF90 = mpiifort
         MPIEXEC = mpiexec
-        SCALAPACKLIB = -L$(INTELDIR)/mkl/lib/intel64 -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
       else
         $(error unsupported MPI: $(MPI))
       endif
@@ -225,11 +225,6 @@ $(SCALAPACK).tgz:
 
 $(SCALAPACK): $(SCALAPACK).tgz
 	tar zxvf $(SCALAPACK).tgz
-
-# scalapack: $(SCALAPACK)
-# 	perl -pe "if(/^BLASLIB/){s!= .*!$(BLASLIB)!;}elsif(/^LAPACKLIB/){s!= .*!$(LAPACKLIB)!;}" \
-# 	$(SCALAPACK)/SLmake.inc.example > $(SCALAPACK)/SLmake.inc
-# 	(cd $(SCALAPACK) && make && make install)
 
 SCALAPACK_CMAKE_OPTS = \
 	-D CMAKE_C_COMPILER=$(CC) \
@@ -382,7 +377,6 @@ TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/include \
 	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
 	-D BLAS_LIBRARY_NAMES:STRING="openblas" \
-	-D LAPACK_INCLUDE_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/include \
 	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
 	-D LAPACK_LIBRARY_NAMES:STRING="openblas"
 else
@@ -391,7 +385,6 @@ TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(ATLAS)/include \
 	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
 	-D BLAS_LIBRARY_NAMES:STRING="f77blas;cblas;atlas" \
-	-D LAPACK_INCLUDE_DIRS:PATH=$(PREFIX)/$(ATLAS)/include \
 	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
 	-D LAPACK_LIBRARY_NAMES:STRING="lapack;f77blas;cblas;atlas"
   else
@@ -400,11 +393,8 @@ TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(INTELDIR)/mkl/include \
 	-D BLAS_LIBRARY_DIRS:PATH="$(INTELDIR)/mkl/lib/intel64;$(INTELDIR)/lib/intel64" \
 	-D BLAS_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5" \
-	-D LAPCK_INCLUDE_DIRS:PATH=$(INTELDIR)/mkl/include \
 	-D LAPACK_LIBRARY_DIRS:PATH="$(INTELDIR)/mkl/lib/intel64;$(INTELDIR)/lib/intel64" \
 	-D LAPACK_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5"
-#	-D BLAS_LIBRARIES:STRING="-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5" \
-#	-D LAPACK_LIBRARIES:STRING="-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5"
     endif
   endif
 endif
