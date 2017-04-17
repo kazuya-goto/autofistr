@@ -1,13 +1,22 @@
-COMPILER = INTEL
-#COMPILER = GCC
+# COMPILER: INTEL or GCC
+#COMPILER = INTEL
+COMPILER = GCC
 
+# MPI: IMPI, OpenMPI or MPICH
+#MPI = IMPI
 MPI = OpenMPI
 #MPI = MPICH
-#MPI = IMPI
 
+# DOWNLOAD_MPI (optional): true or false
+#DOWNLOAD_MPI = true
+
+# BLASLAPACK: MKL, OpenBLAS or ATLAS
+BLASLAPACK = MKL
 #BLASLAPACK = OpenBLAS
 #BLASLAPACK = ATLAS
-BLASLAPACK = MKL
 
+# INTELDIR (optional): Intel tools root dir (default: /opt/intel)
 INTELDIR = /data/opt/intel
+
+# NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 8
