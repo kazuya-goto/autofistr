@@ -5,7 +5,12 @@ NJOBS ?= 1
 
 
 TOPDIR = $(CURDIR)
-PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
+
+ifeq ($(COMPILER), FUJITSU)
+  PREFIX = $(TOPDIR)/$(COMPILER)
+else
+  PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
+endif
 
 
 OPENMPI   = openmpi-2.1.0
@@ -18,6 +23,7 @@ PARMETIS  = parmetis-4.0.3
 SCOTCH    = scotch_6.0.4
 MUMPS     = MUMPS_5.1.1
 TRILINOS  = trilinos-12.10.1
+FISTR     = FrontISTR
 
 
 PACKAGES =
@@ -31,7 +37,6 @@ ifeq ($(COMPILER), INTEL)
   CFLAGS = -O3 -xHost
   CXXFLAGS = -O3 -xHost
   FCFLAGS = -O3 -xHost
-  LDFLAGS = -O3 -xHost
   OMPFLAGS = -qopenmp
   NOFOR_MAIN = -nofor_main
   ifeq ($(BLASLAPACK), OpenBLAS)
@@ -80,8 +85,11 @@ ifeq ($(COMPILER), INTEL)
       endif
     endif
   endif
+  LIBSTDCXX = -lstdc++
+  CLINKER = $(MPICC)
+  F90LINKER = $(MPIF90)
+  F90FPPFLAG = -fpp
   SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2.icc
-  MUMPS_MAKEFILE_INC = Makefile.INTEL.PAR
 endif
 ifeq ($(COMPILER), GCC)
   CC = gcc
@@ -90,7 +98,6 @@ ifeq ($(COMPILER), GCC)
   CFLAGS = -O3 -march=native
   CXXFLAGS = -O3 -march=native
   FCFLAGS = -O3 -march=native
-  LDFLAGS = -O3 -march=native
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), OpenBLAS)
@@ -127,9 +134,38 @@ ifeq ($(COMPILER), GCC)
   MPICXX = mpicxx
   MPIF90 = mpif90
   MPIEXEC = mpiexec
+  LIBSTDCXX = -lstdc++
+  CLINKER = $(MPICC)
+  F90LINKER = $(MPIF90)
+  F90FPPFLAG = -cpp
   SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
   SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2
-  MUMPS_MAKEFILE_INC = Makefile.inc.generic
+endif
+ifeq ($(COMPILER), FUJITSU)
+  CC = fcc
+  CXX = FCC
+  FC = frt
+  CFLAGS = -Kfast -Xg
+  CXXFLAGS = -Kfast -Xg
+  FCFLAGS = -Kfast -Xg
+  OMPFLAGS = -Kopenmp
+  NOFOR_MAIN =
+  BLASLIB = -SSL2BLAMP
+  LAPACKLIB = -SSL2BLAMP
+  ifneq ($(MPI), FUJITSU)
+    $(warning forced to use FUJITSU MPI)
+    MPI = FUJITSU
+  endif
+  MPICC = mpifcc
+  MPICXX = mpiFCC
+  MPIF90 = mpifrt
+  MPIEXEC = mpiexec
+  LIBSTDCXX =
+  CLINKER = $(MPICXX)
+  F90LINKER = $(MPICXX) --linkfortran
+  F90FPPFLAG = -fpp
+  SCALAPACKLIB = -SCALAPACK
+  SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2
 endif
 
 #
@@ -178,9 +214,9 @@ $(PREFIX)/.mpich: $(MPICH)
 	(cd $(MPICH); mkdir build; cd build; \
 	../configure CC=$(CC) CXX=$(CXX) F77=$(FC) FC=$(FC) --enable-fast=all \
 	MPICHLIB_CFLAGS="$(CFLAGS)" MPICHLIB_FFLAGS="$(FCFLAGS)" \
-	MPICHLIB_CXXFLAGS="$(CXXFLAGS)" MPICHLIB_FCFLAGS="$(FCFLAGS)") \
+	MPICHLIB_CXXFLAGS="$(CXXFLAGS)" MPICHLIB_FCFLAGS="$(FCFLAGS)" \
 	-prefix=$(PREFIX)/$(MPICH); \
-	make; make install)
+	make -j $(NJOBS); make install)
 	touch $@
 
 mpich: $(PREFIX)/.mpich
@@ -323,7 +359,7 @@ $(PREFIX)/.mumps: $(MUMPS)
 	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
 	s!%blas_libs%!$(BLASLIB)!; \
 	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
-	s!%ldflags%!$(LDFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
+	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
 	(cd $(MUMPS) && make && \
@@ -409,37 +445,78 @@ $(PREFIX)/.trilinos: $(TRILINOS)-Source
 trilinos: $(PREFIX)/.trilinos
 
 
+$(FISTR):
+	if [ ! -d $(FISTR) ]; then \
+		git clone https://github.com/FrontISTR/FrontISTR.git $(FISTR); \
+	fi
+
+SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
+F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
+
+$(PREFIX)/.frontistr: $(FISTR)
+	(cd $(FISTR); git checkout -B next origin/next)
+	perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake > $(PREFIX)/.ml_libs
+	perl -pe \
+	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
+	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
+	s!%coupler_dir%!$(PREFIX)/$(COUPLER)!; \
+	s!%mumps_dir%!$(PREFIX)/$(MUMPS)!; \
+	s!%trilinos_dir%!$(PREFIX)/$(TRILINOS)!; \
+	s!%ml_libs%!`cat $(PREFIX)/.ml_libs`!; \
+	s!%mpicc%!$(MPICC)!; \
+	s!%cflags%!$(OMPFLAGS)!; \
+	s!%ldflags%!$(OMPFLAGS) $(LIBSTDCXX)!; \
+	s!%coptflags%!$(CFLAGS)!; \
+	s!%clinker%!$(CLINKER)!; \
+	s!%mpicxx%!$(MPICXX)!; \
+	s!%mpif90%!$(MPIF90)!; \
+	s!%f90ldflags%!$(F90LDFLAGS)!; \
+	s!%f90flags%!$(OMPFLAGS)!; \
+	s!%f90optflags%!$(FCFLAGS)!; \
+	s!%fpp%!$(F90FPPFLAG)!; \
+	s!%f90linker%!$(F90LINKER)!;" \
+	FrontISTR_Makefile.conf > $(FISTR)/Makefile.conf
+	(cd $(FISTR) && \
+	./setup.sh -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack && \
+	(cd hecmw1 && make) && (cd fistr1 && make) && \
+	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
+	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
+	touch $@
+
+frontistr: $(PREFIX)/.frontistr
+
+
 clean:
 	rm -f $(TARGET)
-	if [ -d $(OPENMPI) ]; then
-		rm -rf $(OPENMPI)/build
+	if [ -d $(OPENMPI) ]; then \
+		rm -rf $(OPENMPI)/build; \
 	fi
-	if [ -d $(MPICH) ]; then
-		rm -rf $(MPICH)/build
+	if [ -d $(MPICH) ]; then \
+		rm -rf $(MPICH)/build; \
 	fi
-	if [ -d $(OPENBLAS) ]; then
-		(cd $(OPENBLAS) && make clean)
+	if [ -d $(OPENBLAS) ]; then \
+		(cd $(OPENBLAS) && make clean); \
 	fi
-	if [ -d $(ATLAS) ]; then
-		rm -rf $(ATLAS)/build
+	if [ -d $(ATLAS) ]; then \
+		rm -rf $(ATLAS)/build; \
 	fi
-	if [ -d $(SCALAPACK) ]; then
-		rm -rf $(SCALAPACK)/build
+	if [ -d $(SCALAPACK) ]; then \
+		rm -rf $(SCALAPACK)/build; \
 	fi
-	if [ -d $(METIS) ]; then
-		(cd $(METIS) && make distclean)
+	if [ -d $(METIS) ]; then \
+		(cd $(METIS) && make distclean); \
 	fi
-	if [ -d $(PARMETIS) ]; then
-		(cd $(PARMETIS) && make distclean)
+	if [ -d $(PARMETIS) ]; then \
+		(cd $(PARMETIS) && make distclean); \
 	fi
-	if [ -d $(SCOTCH) ]; then
-		(cd $(SCOTCH)/src && make clean)
+	if [ -d $(SCOTCH) ]; then \
+		(cd $(SCOTCH)/src && make clean); \
 	fi
-	if [ -d $(MUMPS) ]; then
-		(cd $(MUMPS) && make clean)
+	if [ -d $(MUMPS) ]; then \
+		(cd $(MUMPS) && make clean); \
 	fi
-	if [ -d $(TRILINOS)-Source ]; then
-		rm -rf $(TRILINOS)-Source/build
+	if [ -d $(TRILINOS)-Source ]; then \
+		rm -rf $(TRILINOS)-Source/build; \
 	fi
 
 distclean:
