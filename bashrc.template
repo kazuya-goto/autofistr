@@ -1,0 +1,3 @@
+export PATH=%mpidir%/bin:$PATH
+export LD_LIBRARY_PATH=%mpidir%/lib:$LD_LIBRARY_PATH
+export MANPATH=%mpidir%/share/man:$MANPATH

@@ -10,31 +10,39 @@ $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
-# detect SYSTEM MPI
-ifneq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
-  $(info SYSTEM MPI is OpenMPI)
-  SYSTEM_MPI = OpenMPI
-else
-  ifneq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
-    $(info SYSTEM MPI is MPICH)
-    SYSTEM_MPI = MPICH
-  else
-    $(info SYSTEM MPI is unknown)
-    SYSTEM_MPI = unknown
-  endif
-endif
-
-ifeq ($(MPI), $(SYSTEM_MPI))
-  DOWNLOAD_MPI ?= false
-else
-  DOWNLOAD_MPI = true
-endif
-$(info DOWNLOAD_MPI is $(DOWNLOAD_MPI))
-
-
 ifeq ($(COMPILER), FUJITSU)
   PREFIX = $(TOPDIR)/$(COMPILER)
 else
+  # detect SYSTEM MPI
+  ifneq ("$(shell mpicc -v 2> /dev/null | grep 'Intel(R) MPI')", "")
+    $(info SYSTEM MPI is IntelMPI)
+    SYSTEM_MPI = IMPI
+  else
+    ifneq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
+      $(info SYSTEM MPI is OpenMPI)
+      SYSTEM_MPI = OpenMPI
+    else
+      ifneq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
+        $(info SYSTEM MPI is MPICH)
+        SYSTEM_MPI = MPICH
+      else
+        $(info SYSTEM MPI is unknown)
+        SYSTEM_MPI = unknown
+      endif
+    endif
+  endif
+
+  ifeq ($(MPI), $(SYSTEM_MPI))
+    DOWNLOAD_MPI ?= false
+  else
+    ifeq ($(MPI), IMPI)
+      $(error Intel MPI not found in PATH)
+    else
+      DOWNLOAD_MPI = true
+    endif
+  endif
+  $(info DOWNLOAD_MPI is $(DOWNLOAD_MPI))
+
   PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
 endif
 
@@ -70,8 +78,6 @@ ifeq ($(COMPILER), INTEL)
     LAPACKLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
   else
     ifeq ($(BLASLAPACK), OpenBLAS)
-#      $(warning OpenBLAS was specified but forced to use MKL)
-#      BLASLAPACK = MKL
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
       PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
       TARGET += $(PREFIX)/.openblas $(PREFIX)/.scalapack
@@ -80,8 +86,6 @@ ifeq ($(COMPILER), INTEL)
       SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
     else
       ifeq ($(BLASLAPACK), ATLAS)
-#        $(warning OpenBLAS was specified but forced to use MKL)
-#        BLASLAPACK = MKL
         PACKAGES += $(ATLAS).tar.bz2 $(SCALAPACK).tgz
         PKG_DIRS += $(ATLAS) $(SCALAPACK)
         TARGET += $(PREFIX)/.atlas $(PREFIX)/.scalapack
@@ -103,6 +107,7 @@ ifeq ($(COMPILER), INTEL)
     endif
   else
     ifeq ($(MPI), OpenMPI)
+      MPI_INST = openmpi
       MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
       MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
       MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
@@ -115,6 +120,7 @@ ifeq ($(COMPILER), INTEL)
       endif
     else
       ifeq ($(MPI), MPICH)
+        MPI_INST = mpich
         MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
         MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
@@ -146,10 +152,19 @@ ifeq ($(COMPILER), GCC)
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), MKL)
-#    $(error MKL not supported with GCC)
     MKLROOT = $(INTELDIR)/mkl
-    BLASLIB = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp
-    LAPACKLIB =${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group -lgomp
+    BLASLIB = -Wl,--start-group \
+	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+	${MKLROOT}/lib/intel64/libmkl_core.a \
+	-Wl,--end-group -lgomp
+    LAPACKLIB = ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+	-Wl,--start-group \
+	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+	${MKLROOT}/lib/intel64/libmkl_core.a \
+	${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+	-Wl,--end-group -lgomp
   else
     ifeq ($(BLASLAPACK), OpenBLAS)
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
@@ -171,11 +186,20 @@ ifeq ($(COMPILER), GCC)
       endif
     endif
   endif
+  MPICC = mpicc
+  MPICXX = mpicxx
+  MPIF90 = mpif90
+  MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
-    $(error Intel MPI not supported with GCC)
+    ifeq ($(BLASLAPACK), MKL)
+      SCALAPACKLIB = \
+	${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+	${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a
+    endif
   else
     ifeq ($(MPI), OpenMPI)
       ifeq ($(DOWNLOAD_MPI), true)
+        MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
@@ -183,21 +207,16 @@ ifeq ($(COMPILER), GCC)
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
         TARGET += $(PREFIX)/.openmpi
-      else
-        ifeq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
-          $(error mpicc in the path is not OpenMPI)
-        endif
-        MPICC = mpicc
-        MPICXX = mpicxx
-        MPIF90 = mpif90
-        MPIEXEC = mpiexec
       endif
       ifeq ($(BLASLAPACK), MKL)
-        SCALAPACKLIB = ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
+        SCALAPACKLIB = \
+		${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+		${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
       endif
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
+          MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
           MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
@@ -205,17 +224,11 @@ ifeq ($(COMPILER), GCC)
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
           TARGET += $(PREFIX)/.mpich
-        else
-          ifeq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
-            $(error mpicc in the path is not MPICH)
-          endif
-          MPICC = mpicc
-          MPICXX = mpicxx
-          MPIF90 = mpif90
-          MPIEXEC = mpiexec
         endif
         ifeq ($(BLASLAPACK), MKL)
-          SCALAPACKLIB = ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a
+          SCALAPACKLIB = \
+		${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+		${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a
         endif
       else
         $(error unsupported MPI: $(MPI))
@@ -258,17 +271,18 @@ endif
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source $(FISTR)
-TARGET += $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr
+TARGET += $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr $(PREFIX)/modulefile
 
-
-.PHONY: all download extract openmpi mpich openblas atlas scalapack metis parmetis scotch mumps trilinos frontistr clean distclean
-
+$(info TARGET is $(TARGET))
 
 all: $(TARGET)
+.PHONY: all
 
 download: $(PACKAGES)
+.PHONY: download
 
 extract: $(PKG_DIRS)
+.PHONY: extract
 
 
 $(OPENMPI).tar.bz2:
@@ -286,6 +300,7 @@ $(PREFIX)/.openmpi: $(OPENMPI)
 	touch $@
 
 openmpi: $(PREFIX)/.openmpi
+.PHONY: openmpi
 
 
 $(MPICH).tar.gz:
@@ -304,6 +319,7 @@ $(PREFIX)/.mpich: $(MPICH)
 	touch $@
 
 mpich: $(PREFIX)/.mpich
+.PHONY: mpich
 
 
 $(OPENBLAS).tar.gz:
@@ -318,6 +334,7 @@ $(PREFIX)/.openblas: $(OPENBLAS)
 	touch $@
 
 openblas: $(PREFIX)/.openblas
+.PHONY: openblas
 
 
 $(ATLAS).tar.bz2:
@@ -338,6 +355,7 @@ $(PREFIX)/.atlas: $(ATLAS) lapack-3.7.0.tgz
 	touch $@
 
 atlas: $(PREFIX)/.atlas
+.PHONY: atlas
 
 
 $(SCALAPACK).tgz:
@@ -364,7 +382,7 @@ SCALAPACK_CMAKE_OPTS += \
 	-D LAPACK_LA_ACK_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/liblapack_atlas.so
 endif
 
-$(PREFIX)/.scalapack: $(SCALAPACK)
+$(PREFIX)/.scalapack: $(SCALAPACK) $(PREFIX)/.$(MPI_INST)
 	(cd $(SCALAPACK); mkdir build; cd build; \
 	cmake $(SCALAPACK_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
@@ -372,6 +390,7 @@ $(PREFIX)/.scalapack: $(SCALAPACK)
 	touch $@
 
 scalapack: $(PREFIX)/.scalapack
+.PHONY: scalapack
 
 
 $(METIS).tar.gz:
@@ -386,6 +405,7 @@ $(PREFIX)/.metis: $(METIS)
 	touch $@
 
 metis: $(PREFIX)/.metis
+.PHONY: metis
 
 
 $(PARMETIS).tar.gz:
@@ -394,12 +414,13 @@ $(PARMETIS).tar.gz:
 $(PARMETIS): $(PARMETIS).tar.gz
 	tar zxvf $(PARMETIS).tar.gz
 
-$(PREFIX)/.parmetis: $(PARMETIS)
+$(PREFIX)/.parmetis: $(PARMETIS) $(PREFIX)/.$(MPI_INST)
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(MPICC) cxx=$(MPICXX) && \
 	make --no-print-directory -j $(NJOBS) install)
 	touch $@
 
 parmetis: $(PREFIX)/.parmetis
+.PHONY: parmetis
 
 
 $(SCOTCH).tar.gz:
@@ -408,7 +429,7 @@ $(SCOTCH).tar.gz:
 $(SCOTCH): $(SCOTCH).tar.gz
 	tar zxvf $(SCOTCH).tar.gz
 
-$(PREFIX)/.scotch: $(SCOTCH)
+$(PREFIX)/.scotch: $(SCOTCH) $(PREFIX)/.$(MPI_INST)
 	perl -pe \
 	"if(/^CCS/){s!= .*!= $(CC)!;} \
 	elsif(/^CCP/){s!= .*!= $(MPICC)!;} \
@@ -425,6 +446,7 @@ $(PREFIX)/.scotch: $(SCOTCH)
 	touch $@
 
 scotch: $(PREFIX)/.scotch
+.PHONY: scotch
 
 
 $(MUMPS).tar.gz:
@@ -433,7 +455,7 @@ $(MUMPS).tar.gz:
 $(MUMPS): $(MUMPS).tar.gz
 	tar zxvf $(MUMPS).tar.gz
 
-$(PREFIX)/.mumps: $(MUMPS)
+$(PREFIX)/.mumps: $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -452,6 +474,7 @@ $(PREFIX)/.mumps: $(MUMPS)
 	touch $@
 
 mumps: $(PREFIX)/.mumps
+.PHONY: mumps
 
 
 $(TRILINOS)-Source.tar.bz2:
@@ -519,7 +542,7 @@ TRILINOS_CMAKE_OPTS += \
   endif
 endif
 
-$(PREFIX)/.trilinos: $(TRILINOS)-Source
+$(PREFIX)/.trilinos: $(TRILINOS)-Source $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps
 	(cd $(TRILINOS)-Source; mkdir build; cd build; \
 	cmake $(TRILINOS_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
@@ -527,6 +550,7 @@ $(PREFIX)/.trilinos: $(TRILINOS)-Source
 	touch $@
 
 trilinos: $(PREFIX)/.trilinos
+.PHONY: trilinos
 
 
 $(FISTR):
@@ -537,7 +561,7 @@ $(FISTR):
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
-$(PREFIX)/.frontistr: $(FISTR)
+$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos
 	(cd $(FISTR); git checkout -B next origin/next)
 	perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake > $(PREFIX)/.ml_libs
 	perl -pe \
@@ -549,7 +573,7 @@ $(PREFIX)/.frontistr: $(FISTR)
 	s!%ml_libs%!`cat $(PREFIX)/.ml_libs`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
-	s!%ldflags%!$(OMPFLAGS) $(LIBSTDCXX)!; \
+	s!%ldflags%!$(OMPFLAGS) -lm $(LIBSTDCXX)!; \
 	s!%coptflags%!$(CFLAGS)!; \
 	s!%clinker%!$(CLINKER)!; \
 	s!%mpicxx%!$(MPICXX)!; \
@@ -568,41 +592,76 @@ $(PREFIX)/.frontistr: $(FISTR)
 	touch $@
 
 frontistr: $(PREFIX)/.frontistr
+.PHONY: frontistr
+
+
+env2-code:
+	if [ ! -d $@ ]; then \
+		git clone https://git.code.sf.net/p/env2/code $@; \
+	fi
+
+$(PREFIX)/bashrc:
+ifeq ($(MPI), OpenMPI)
+	perl -pe 's!%mpidir%!$(PREFIX)/$(OPENMPI)!;' bashrc.template > $(PREFIX)/bashrc
+else
+  ifeq ($(MPI), MPICH)
+	perl -pe 's!%mpidir%!$(PREFIX)/$(MPICH)!;' bashrc.template > $(PREFIX)/bashrc
+  endif
+endif
+
+$(PREFIX)/modulefile: env2-code $(PREFIX)/bashrc
+	echo "#%Module" > $@
+	perl env2-code/env2 -from bash -to modulecmd $(PREFIX)/bashrc >> $@
+
+modulefile: $(PREFIX)/modulefile
+.PHONY: modulefile
 
 
 clean:
 	rm -f $(TARGET)
 	if [ -d $(OPENMPI) ]; then \
 		rm -rf $(OPENMPI)/build; \
+		rm -f $(PREFIX)/.openmpi; \
 	fi
 	if [ -d $(MPICH) ]; then \
 		rm -rf $(MPICH)/build; \
+		rm -f $(PREFIX)/.mpich; \
 	fi
 	if [ -d $(OPENBLAS) ]; then \
 		(cd $(OPENBLAS) && make clean); \
+		rm -f $(PREFIX)/.openblas; \
 	fi
 	if [ -d $(ATLAS) ]; then \
 		rm -rf $(ATLAS)/build; \
+		rm -f $(PREFIX)/.atlas; \
 	fi
 	if [ -d $(SCALAPACK) ]; then \
 		rm -rf $(SCALAPACK)/build; \
+		rm -f $(PREFIX)/.scalapack; \
 	fi
 	if [ -d $(METIS) ]; then \
 		(cd $(METIS) && make distclean); \
+		rm -f $(PREFIX)/.metis; \
 	fi
 	if [ -d $(PARMETIS) ]; then \
 		(cd $(PARMETIS) && make distclean); \
+		rm -f $(PREFIX)/.parmetis; \
 	fi
 	if [ -d $(SCOTCH) ]; then \
 		(cd $(SCOTCH)/src && make clean); \
+		rm -f $(PREFIX)/.scotch; \
 	fi
 	if [ -d $(MUMPS) ]; then \
 		(cd $(MUMPS) && make clean); \
+		rm -f $(PREFIX)/.mumps; \
 	fi
 	if [ -d $(TRILINOS)-Source ]; then \
 		rm -rf $(TRILINOS)-Source/build; \
+		rm -f $(PREFIX)/.trilinos; \
 	fi
+.PHONY: clean
 
 distclean:
 	rm -f $(PKG_DIRS)
 	rm -rf $(PREFIX)
+.PHONY: distclean
