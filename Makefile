@@ -563,14 +563,13 @@ F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) 
 
 $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos
 	(cd $(FISTR); git checkout -B next origin/next)
-	perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake > $(PREFIX)/.ml_libs
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
 	s!%coupler_dir%!$(PREFIX)/$(COUPLER)!; \
 	s!%mumps_dir%!$(PREFIX)/$(MUMPS)!; \
 	s!%trilinos_dir%!$(PREFIX)/$(TRILINOS)!; \
-	s!%ml_libs%!`cat $(PREFIX)/.ml_libs`!; \
+	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
 	s!%ldflags%!$(OMPFLAGS) -lm $(LIBSTDCXX)!; \
