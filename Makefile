@@ -118,6 +118,7 @@ ifeq ($(COMPILER), INTEL)
       ifeq ($(BLASLAPACK), MKL)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
       endif
+      LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
         MPI_INST = mpich
@@ -136,7 +137,7 @@ ifeq ($(COMPILER), INTEL)
       endif
     endif
   endif
-  LIBSTDCXX = -lstdc++
+  LIBSTDCXX += -lstdc++
   CLINKER = $(MPICC)
   F90LINKER = $(MPIF90)
   F90FPPFLAG = -fpp
@@ -213,6 +214,7 @@ ifeq ($(COMPILER), GCC)
 		${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
 		${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
       endif
+      LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
@@ -235,7 +237,7 @@ ifeq ($(COMPILER), GCC)
       endif
     endif
   endif
-  LIBSTDCXX = -lstdc++
+  LIBSTDCXX += -lstdc++
   CLINKER = $(MPICC)
   F90LINKER = $(MPIF90)
   F90FPPFLAG = -cpp
@@ -270,7 +272,7 @@ endif
 
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
-PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source $(FISTR)
+PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
 TARGET += $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr $(PREFIX)/modulefile
 
 $(info TARGET is $(TARGET))
@@ -350,9 +352,14 @@ $(ATLAS): $(ATLAS).tar.bz2
 $(PREFIX)/.atlas: $(ATLAS) lapack-3.7.0.tgz
 	(cd $(ATLAS); mkdir build; cd build; \
 	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/lapack-3.7.0.tgz \
-	-Si omp 1 -F alg -fopenmp --prefix=$(PREFIX)/$(ATLAS); \
+	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS); \
 	make build; make install)
 	touch $@
+
+# to force change compiler, add the following to configure option
+#	-C ac $(CC) -C if $(FC) \
+# to force change compiler flags, add the following to configure option
+#	-F ac "$(CFLAGS)" -F if "$(FCFLAGS)" \
 
 atlas: $(PREFIX)/.atlas
 .PHONY: atlas
@@ -455,7 +462,11 @@ $(MUMPS).tar.gz:
 $(MUMPS): $(MUMPS).tar.gz
 	tar zxvf $(MUMPS).tar.gz
 
+ifeq ($(BLASLAPACK), MKL)
 $(PREFIX)/.mumps: $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch
+else
+$(PREFIX)/.mumps: $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.scalapack
+endif
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -561,7 +572,7 @@ $(FISTR):
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
-$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos
+$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
 	(cd $(FISTR); git checkout -B next origin/next)
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -647,7 +658,7 @@ clean:
 		rm -f $(PREFIX)/.parmetis; \
 	fi
 	if [ -d $(SCOTCH) ]; then \
-		(cd $(SCOTCH)/src && make clean); \
+		(cd $(SCOTCH)/src && make realclean); \
 		rm -f $(PREFIX)/.scotch; \
 	fi
 	if [ -d $(MUMPS) ]; then \
@@ -658,9 +669,17 @@ clean:
 		rm -rf $(TRILINOS)-Source/build; \
 		rm -f $(PREFIX)/.trilinos; \
 	fi
+	if [ -d $(FISTR) ]; then \
+		(cd $(FISTR); make clean); \
+		rm -f $(PREFIX)/.fistr; \
+	fi
 .PHONY: clean
 
 distclean:
-	rm -f $(PKG_DIRS)
+	rm -rf $(PKG_DIRS)
 	rm -rf $(PREFIX)
+	if [ -d $(FISTR) ]; then \
+		(cd $(FISTR); make distclean); \
+		rm -f $(PREFIX)/.fistr; \
+	fi
 .PHONY: distclean
