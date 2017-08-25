@@ -1,19 +1,22 @@
-# COMPILER: INTEL or GCC
+# COMPILER: {INTEL, GCC, FUJITSU}
 #COMPILER = INTEL
 COMPILER = GCC
+#COMPILER = FUJITSU
 
-# MPI: IMPI, OpenMPI or MPICH
+# MPI: {IMPI, OpenMPI, MPICH, FUJITSU}
 #MPI = IMPI
-#MPI = OpenMPI
-MPI = MPICH
+MPI = OpenMPI
+#MPI = MPICH
+#MPI = FUJITSU
 
-# DOWNLOAD_MPI (optional): true or false
+# DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
 
-# BLASLAPACK: MKL, OpenBLAS or ATLAS
+# BLASLAPACK: {MKL, OpenBLAS, ATLAS, FUJITSU}
 #BLASLAPACK = MKL
 BLASLAPACK = OpenBLAS
 #BLASLAPACK = ATLAS
+#BLASLAPACK = FUJITSU
 
 # INTELDIR (optional): Intel tools root dir (default: /opt/intel)
 INTELDIR = /data/opt/intel

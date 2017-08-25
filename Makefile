@@ -107,7 +107,7 @@ ifeq ($(COMPILER), INTEL)
     endif
   else
     ifeq ($(MPI), OpenMPI)
-      MPI_INST = openmpi
+      MPI_INST = $(PREFIX)/.openmpi
       MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
       MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
       MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
@@ -121,7 +121,7 @@ ifeq ($(COMPILER), INTEL)
       LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
-        MPI_INST = mpich
+        MPI_INST = $(PREFIX)/.mpich
         MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
         MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
@@ -158,14 +158,13 @@ ifeq ($(COMPILER), GCC)
 	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
 	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
 	${MKLROOT}/lib/intel64/libmkl_core.a \
-	-Wl,--end-group -lgomp
-    LAPACKLIB = ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-	-Wl,--start-group \
+	-Wl,--end-group -lgomp -ldl
+    LAPACKLIB = -Wl,--start-group \
 	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
 	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
 	${MKLROOT}/lib/intel64/libmkl_core.a \
 	${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
-	-Wl,--end-group -lgomp
+	-Wl,--end-group -lgomp -ldl
   else
     ifeq ($(BLASLAPACK), OpenBLAS)
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
@@ -200,7 +199,7 @@ ifeq ($(COMPILER), GCC)
   else
     ifeq ($(MPI), OpenMPI)
       ifeq ($(DOWNLOAD_MPI), true)
-        MPI_INST = openmpi
+        MPI_INST = $(PREFIX)/.openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
@@ -218,7 +217,7 @@ ifeq ($(COMPILER), GCC)
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
-          MPI_INST = mpich
+          MPI_INST = $(PREFIX)/.mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
           MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
@@ -249,9 +248,13 @@ ifeq ($(COMPILER), FUJITSU)
   FC = frt
   CFLAGS = -Kfast -Xg
   CXXFLAGS = -Kfast -Xg
-  FCFLAGS = -Kfast -Xg
+  FCFLAGS = -Kfast
   OMPFLAGS = -Kopenmp
-  NOFOR_MAIN =
+  NOFOR_MAIN = -mlcmain=main
+  ifneq ($(BLASLAPACK), FUJITSU)
+    $(warning forced to use FUJITSU BLASLAPACK)
+    BLASLAPACK = FUJITSU
+  endif
   BLASLIB = -SSL2BLAMP
   LAPACKLIB = -SSL2BLAMP
   ifneq ($(MPI), FUJITSU)
@@ -273,7 +276,7 @@ endif
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
-TARGET += $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr $(PREFIX)/modulefile
+TARGET += $(PREFIX) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr $(PREFIX)/modulefile
 
 $(info TARGET is $(TARGET))
 
@@ -287,11 +290,17 @@ extract: $(PKG_DIRS)
 .PHONY: extract
 
 
+$(PREFIX):
+	if [ ! -d $(PREFIX) ]; then mkdir -p $(PREFIX); fi
+
+
 $(OPENMPI).tar.bz2:
 	wget https://www.open-mpi.org/software/ompi/v2.1/downloads/$(OPENMPI).tar.bz2
 
 $(OPENMPI): $(OPENMPI).tar.bz2
+	rm -rf $@
 	tar jxvf $(OPENMPI).tar.bz2
+	touch $@
 
 $(PREFIX)/.openmpi: $(OPENMPI)
 	(cd $(OPENMPI); mkdir build; cd build; \
@@ -309,7 +318,9 @@ $(MPICH).tar.gz:
 	wget http://www.mpich.org/static/downloads/3.2/$(MPICH).tar.gz
 
 $(MPICH): $(MPICH).tar.gz
+	rm -rf $@
 	tar zxvf $(MPICH).tar.gz
+	touch $@
 
 $(PREFIX)/.mpich: $(MPICH)
 	(cd $(MPICH); mkdir build; cd build; \
@@ -329,10 +340,12 @@ $(OPENBLAS).tar.gz:
 	mv v0.2.19.tar.gz $@
 
 $(OPENBLAS): $(OPENBLAS).tar.gz
+	rm -rf $@
 	tar zxvf $(OPENBLAS).tar.gz
+	touch $@
 
 $(PREFIX)/.openblas: $(OPENBLAS)
-	(cd $(OPENBLAS); make USE_OPENMP=1; make install PREFIX=$(PREFIX)/$(OPENBLAS))
+	(cd $(OPENBLAS); make USE_OPENMP=1 NO_SHARED=1; make install NO_SHARED=1 PREFIX=$(PREFIX)/$(OPENBLAS))
 	touch $@
 
 openblas: $(PREFIX)/.openblas
@@ -346,8 +359,10 @@ lapack-3.7.0.tgz:
 	wget http://www.netlib.org/lapack/lapack-3.7.0.tgz
 
 $(ATLAS): $(ATLAS).tar.bz2
+	rm -rf $@
 	tar jxvf $(ATLAS).tar.bz2
 	mv ATLAS $@
+	touch $@
 
 $(PREFIX)/.atlas: $(ATLAS) lapack-3.7.0.tgz
 	(cd $(ATLAS); mkdir build; cd build; \
@@ -369,7 +384,9 @@ $(SCALAPACK).tgz:
 	wget http://www.netlib.org/scalapack/$(SCALAPACK).tgz
 
 $(SCALAPACK): $(SCALAPACK).tgz
+	rm -rf $@
 	tar zxvf $(SCALAPACK).tgz
+	touch $@
 
 SCALAPACK_CMAKE_OPTS = \
 	-D CMAKE_C_COMPILER=$(CC) \
@@ -389,7 +406,7 @@ SCALAPACK_CMAKE_OPTS += \
 	-D LAPACK_LA_ACK_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/liblapack_atlas.so
 endif
 
-$(PREFIX)/.scalapack: $(SCALAPACK) $(PREFIX)/.$(MPI_INST)
+$(PREFIX)/.scalapack: $(SCALAPACK) $(MPI_INST)
 	(cd $(SCALAPACK); mkdir build; cd build; \
 	cmake $(SCALAPACK_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
@@ -404,7 +421,9 @@ $(METIS).tar.gz:
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$(METIS).tar.gz
 
 $(METIS): $(METIS).tar.gz
+	rm -rf $@
 	tar zxvf $(METIS).tar.gz
+	touch $@
 
 $(PREFIX)/.metis: $(METIS)
 	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) && \
@@ -419,9 +438,11 @@ $(PARMETIS).tar.gz:
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$(PARMETIS).tar.gz
 
 $(PARMETIS): $(PARMETIS).tar.gz
+	rm -rf $@
 	tar zxvf $(PARMETIS).tar.gz
+	touch $@
 
-$(PREFIX)/.parmetis: $(PARMETIS) $(PREFIX)/.$(MPI_INST)
+$(PREFIX)/.parmetis: $(PARMETIS) $(MPI_INST)
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(MPICC) cxx=$(MPICXX) && \
 	make --no-print-directory -j $(NJOBS) install)
 	touch $@
@@ -434,13 +455,16 @@ $(SCOTCH).tar.gz:
 	wget https://gforge.inria.fr/frs/download.php/file/34618/$(SCOTCH).tar.gz
 
 $(SCOTCH): $(SCOTCH).tar.gz
+	rm -rf $@
 	tar zxvf $(SCOTCH).tar.gz
+	touch $@
 
-$(PREFIX)/.scotch: $(SCOTCH) $(PREFIX)/.$(MPI_INST)
+$(PREFIX)/.scotch: $(SCOTCH) $(MPI_INST)
 	perl -pe \
 	"if(/^CCS/){s!= .*!= $(CC)!;} \
 	elsif(/^CCP/){s!= .*!= $(MPICC)!;} \
-	elsif(/^CCD/){s!= .*!= $(MPICC)!;}" \
+	elsif(/^CCD/){s!= .*!= $(MPICC)!;} \
+	elsif(/^CFLAGS/){s!-O3!$(CFLAGS)!; s!-DSCOTCH_PTHREAD!!;}" \
 	$(SCOTCH)/src/Make.inc/$(SCOTCH_MAKEFILE_INC) > $(SCOTCH)/src/Makefile.inc
 	(cd $(SCOTCH)/src && \
 	make -j $(NJOBS) scotch && \
@@ -460,13 +484,19 @@ $(MUMPS).tar.gz:
 	wget http://mumps.enseeiht.fr/$(MUMPS).tar.gz
 
 $(MUMPS): $(MUMPS).tar.gz
+	rm -rf $@
 	tar zxvf $(MUMPS).tar.gz
+	touch $@
 
-ifeq ($(BLASLAPACK), MKL)
-$(PREFIX)/.mumps: $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch
-else
-$(PREFIX)/.mumps: $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.scalapack
+MUMPS_DEPS = $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch
+ifeq ($(BLASLAPACK), OpenBLAS)
+MUMPS_DEPS += $(PREFIX)/.scalapack
 endif
+ifeq ($(BLASLAPACK), ATLAS)
+MUMPS_DEPS += $(PREFIX)/.scalapack
+endif
+
+$(PREFIX)/.mumps: $(MUMPS_DEPS)
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -479,7 +509,7 @@ endif
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
-	(cd $(MUMPS) && make && \
+	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
 	touch $@
@@ -492,7 +522,9 @@ $(TRILINOS)-Source.tar.bz2:
 	wget http://trilinos.csbsju.edu/download/files/$(TRILINOS)-Source.tar.bz2
 
 $(TRILINOS)-Source: $(TRILINOS)-Source.tar.bz2
+	rm -rf $@
 	tar jxvf $(TRILINOS)-Source.tar.bz2
+	touch $@
 
 TRILINOS_CMAKE_OPTS = \
 	-D Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
@@ -549,6 +581,12 @@ TRILINOS_CMAKE_OPTS += \
 	-D BLAS_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5" \
 	-D LAPACK_LIBRARY_DIRS:PATH="$(INTELDIR)/mkl/lib/intel64;$(INTELDIR)/lib/intel64" \
 	-D LAPACK_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5"
+    else
+      ifeq ($(BLASLAPACK), FUJITSU)
+TRILINOS_CMAKE_OPTS += \
+	-D TPL_BLAS_LIBRARIES:STRING="-SSL2" \
+	-D TPL_LAPACK_LIBRARIES:STRING="-SSL2"
+      endif
     endif
   endif
 endif
@@ -589,7 +627,7 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	s!%mpicxx%!$(MPICXX)!; \
 	s!%mpif90%!$(MPIF90)!; \
 	s!%f90ldflags%!$(F90LDFLAGS)!; \
-	s!%f90flags%!$(OMPFLAGS)!; \
+	s!%f90flags%!$(OMPFLAGS) $(NOFOR_MAIN)!; \
 	s!%f90optflags%!$(FCFLAGS)!; \
 	s!%fpp%!$(F90FPPFLAG)!; \
 	s!%f90linker%!$(F90LINKER)!;" \
@@ -676,7 +714,7 @@ clean:
 .PHONY: clean
 
 distclean:
-	rm -rf $(PKG_DIRS)
+	rm -rf $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
 	rm -rf $(PREFIX)
 	if [ -d $(FISTR) ]; then \
 		(cd $(FISTR); make distclean); \
