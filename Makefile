@@ -11,6 +11,29 @@ $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
+
+CMAKE     = cmake-3.9.1
+OPENMPI   = openmpi-2.1.0
+MPICH     = mpich-3.2
+OPENBLAS  = OpenBLAS-0.2.19
+ATLAS     = atlas3.10.3
+SCALAPACK = scalapack-2.0.2
+METIS     = metis-5.1.0
+PARMETIS  = parmetis-4.0.3
+SCOTCH    = scotch_6.0.4
+MUMPS     = MUMPS_5.1.1
+#TRILINOS  = trilinos-12.2.1
+TRILINOS  = trilinos-12.6.3
+#TRILINOS  = trilinos-12.10.1
+FISTR     = FrontISTR
+
+
+PACKAGES =
+PKG_DIRS =
+TARGET =
+
+
+# set PREFIX
 ifeq ($(COMPILER), FUJITSU)
   PREFIX = $(TOPDIR)/$(COMPILER)
 else
@@ -48,24 +71,34 @@ else
 endif
 
 
-OPENMPI   = openmpi-2.1.0
-MPICH     = mpich-3.2
-OPENBLAS  = OpenBLAS-0.2.19
-ATLAS     = atlas3.10.3
-SCALAPACK = scalapack-2.0.2
-METIS     = metis-5.1.0
-PARMETIS  = parmetis-4.0.3
-SCOTCH    = scotch_6.0.4
-MUMPS     = MUMPS_5.1.1
-#TRILINOS  = trilinos-12.2.1
-TRILINOS  = trilinos-12.6.3
-#TRILINOS  = trilinos-12.10.1
-FISTR     = FrontISTR
+# detect SYSTEM CMAKE
+CMAKE_MINVER_MAJOR = 2
+CMAKE_MINVER_MINOR = 8
 
+export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 
-PACKAGES =
-PKG_DIRS =
-TARGET =
+CMAKE_VER_MAJOR = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
+CMAKE_VER_MINOR = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
+CMAKE_VER_PATCH = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; print;}')
+
+DOWNLOAD_CMAKE = true
+ifneq ($(CMAKE_VER_MAJOR), "")
+  $(info cmake-$(CMAKE_VER_MAJOR).$(CMAKE_VER_MINOR).$(CMAKE_VER_PATCH) detected)
+  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -ge $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
+    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -ge $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
+      $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
+      DOWNLOAD_CMAKE = false
+    endif
+  endif
+endif
+$(info DOWNLOAD_CMAKE is $(DOWNLOAD_CMAKE))
+ifeq ($(DOWNLOAD_CMAKE), true)
+  $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
+  PACKAGES = $(CMAKE).tar.gz
+  PKG_DIRS = $(CMAKE)
+  TARGET = $(PREFIX)/.cmake
+endif
+
 
 ifeq ($(COMPILER), INTEL)
   CC = icc
@@ -314,6 +347,21 @@ extract: $(PKG_DIRS)
 
 $(PREFIX):
 	if [ ! -d $(PREFIX) ]; then mkdir -p $(PREFIX); fi
+
+
+$(CMAKE).tar.gz:
+	wget https://cmake.org/files/v3.9/$(CMAKE).tar.gz
+
+$(CMAKE): $(CMAKE).tar.gz
+	rm -rf $@
+	tar zxvf $(CMAKE).tar.gz
+	touch $@
+
+$(PREFIX)/.cmake: $(CMAKE)
+	(cd $(CMAKE) && ./bootstrap --parallel=$(NJOBS) --prefix=$(PREFIX)/$(CMAKE) && make -j $(NJOBS) && make install)
+
+cmake: $(PREFIX)/.cmake
+.PHONY: cmake
 
 
 $(OPENMPI).tar.bz2:
@@ -723,7 +771,7 @@ endif
 #	-DLAPACK_LINKER_FLAGS=-SSL2BLAMP \
 
 $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
-	(cd $(FISTR); mkdir build; cd build; \
+	(cd $(FISTR); mkdir build; cd build; cmake --version; \
 	cmake $(FISTR_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
 	make install)
