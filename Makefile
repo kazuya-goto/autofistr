@@ -22,9 +22,11 @@ METIS     = metis-5.1.0
 PARMETIS  = parmetis-4.0.3
 SCOTCH    = scotch_6.0.4
 MUMPS     = MUMPS_5.1.1
-#TRILINOS  = trilinos-12.2.1
-TRILINOS  = trilinos-12.6.3
-#TRILINOS  = trilinos-12.10.1
+ifeq ($(COMPILER), FUJITSU)
+  TRILINOS  = trilinos-12.6.4
+else
+  TRILINOS  = trilinos-12.10.1
+endif
 FISTR     = FrontISTR
 
 
@@ -766,9 +768,6 @@ FISTR_CMAKE_OPTS += \
     endif
   endif
 endif
-
-#	-DBLAS_LINKER_FLAGS=-SSL2BLAMP \
-#	-DLAPACK_LINKER_FLAGS=-SSL2BLAMP \
 
 $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
 	(cd $(FISTR); mkdir build; cd build; cmake --version; \
