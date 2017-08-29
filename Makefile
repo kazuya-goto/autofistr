@@ -137,7 +137,13 @@ ifeq ($(COMPILER), INTEL)
         LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
         SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
       else
-        $(error unsupported BLASLAPACK: $(BLASLAPACK))
+        ifeq ($(BLASLAPACK), SYSTEM)
+          BLASLIB ?= -lblas
+          LAPACKLIB ?= -llapack
+          SCALAPACKLIB ?= -lscalapack
+        else
+          $(error unsupported BLASLAPACK: $(BLASLAPACK))
+        endif
       endif
     endif
   endif
@@ -192,9 +198,9 @@ ifeq ($(COMPILER), GCC)
   CXX = g++
   FC = gfortran
   ifeq ($(BUILD_TYPE), RELEASE)
-    CFLAGS = -O3 -march=native
-    CXXFLAGS = -O3 -march=native
-    FCFLAGS = -O3 -march=native
+    CFLAGS = -O3 -mtune=native
+    CXXFLAGS = -O3 -mtune=native
+    FCFLAGS = -O3 -mtune=native
   else
     CFLAGS = -O0 -g
     CXXFLAGS = -O0 -g
@@ -232,7 +238,13 @@ ifeq ($(COMPILER), GCC)
         LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
         SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
       else
-        $(error unsupported BLASLAPACK: $(BLASLAPACK))
+        ifeq ($(BLASLAPACK), SYSTEM)
+          BLASLIB ?= -lblas
+          LAPACKLIB ?= -llapack
+          SCALAPACKLIB ?= -lscalapack
+        else
+          $(error unsupported BLASLAPACK: $(BLASLAPACK))
+        endif
       endif
     endif
   endif
@@ -330,6 +342,9 @@ ifeq ($(COMPILER), FUJITSU)
   SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2
 endif
 
+ifeq ("$(shell uname)", "Darwin")
+  SCOTCH_MAKEFILE_INC = Makefile.inc.i686_mac_darwin10
+endif
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
@@ -417,7 +432,7 @@ $(OPENBLAS): $(OPENBLAS).tar.gz
 	touch $@
 
 $(PREFIX)/.openblas: $(OPENBLAS)
-	(cd $(OPENBLAS); make USE_OPENMP=1 NO_SHARED=1; make install NO_SHARED=1 PREFIX=$(PREFIX)/$(OPENBLAS))
+	(cd $(OPENBLAS); make USE_OPENMP=1 NO_SHARED=1 CC=$(CC) FC=$(FC); make install NO_SHARED=1 PREFIX=$(PREFIX)/$(OPENBLAS))
 	touch $@
 
 openblas: $(PREFIX)/.openblas
@@ -764,6 +779,11 @@ FISTR_CMAKE_OPTS += \
 	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
 	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
 	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS)
+      else
+FISTR_CMAKE_OPTS += \
+	-D BLAS_LIBRARIES=$(BLASLIB) \
+	-D LAPACK_LIBRARIES=$(LAPACKLIB) \
+	-D SCALAPACK_LIBRARIES=$(SCALAPACKLIB)
       endif
     endif
   endif
@@ -852,7 +872,7 @@ clean:
 .PHONY: clean
 
 distclean:
-	rm -rf $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
+	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
 	rm -rf $(PREFIX)
 	if [ -d $(FISTR) ]; then \
 		(cd $(FISTR); make distclean); \
