@@ -1,5 +1,6 @@
 include Makefile.in
 
+BUILD_TYPE ?= RELEASE
 INTELDIR ?= /opt/intel
 NJOBS ?= 1
 
@@ -56,7 +57,9 @@ METIS     = metis-5.1.0
 PARMETIS  = parmetis-4.0.3
 SCOTCH    = scotch_6.0.4
 MUMPS     = MUMPS_5.1.1
-TRILINOS  = trilinos-12.10.1
+#TRILINOS  = trilinos-12.2.1
+TRILINOS  = trilinos-12.6.3
+#TRILINOS  = trilinos-12.10.1
 FISTR     = FrontISTR
 
 
@@ -68,9 +71,15 @@ ifeq ($(COMPILER), INTEL)
   CC = icc
   CXX = icpc
   FC = ifort
-  CFLAGS = -O3 -xHost
-  CXXFLAGS = -O3 -xHost
-  FCFLAGS = -O3 -xHost
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS = -O3 -xHost
+    CXXFLAGS = -O3 -xHost
+    FCFLAGS = -O3 -xHost
+  else
+    CFLAGS = -O0 -g -traceback
+    CXXFLAGS = -O0 -g -traceback
+    FCFLAGS = -O0 -g -CB -CU -traceback
+  endif
   OMPFLAGS = -qopenmp
   NOFOR_MAIN = -nofor_main
   ifeq ($(BLASLAPACK), MKL)
@@ -147,9 +156,15 @@ ifeq ($(COMPILER), GCC)
   CC = gcc
   CXX = g++
   FC = gfortran
-  CFLAGS = -O3 -march=native
-  CXXFLAGS = -O3 -march=native
-  FCFLAGS = -O3 -march=native
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS = -O3 -march=native
+    CXXFLAGS = -O3 -march=native
+    FCFLAGS = -O3 -march=native
+  else
+    CFLAGS = -O0 -g
+    CXXFLAGS = -O0 -g
+    FCFLAGS = -O0 -g
+  endif
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), MKL)
@@ -246,11 +261,18 @@ ifeq ($(COMPILER), FUJITSU)
   CC = fcc
   CXX = FCC
   FC = frt
-  CFLAGS = -Kfast -Xg
-  CXXFLAGS = -Kfast -Xg
-  FCFLAGS = -Kfast
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS = -Kfast -Xg
+    CXXFLAGS = -Kfast -Xg
+    FCFLAGS = -Kfast
+  else
+    CFLAGS = -O0 -Xg
+    CXXFLAGS = -O0 -Xg
+    FCFLAGS = -O0 -Xg
+  endif
   OMPFLAGS = -Kopenmp
-  NOFOR_MAIN = -mlcmain=main
+  #NOFOR_MAIN = -mlcmain=main
+  NOFOR_MAIN =
   ifneq ($(BLASLAPACK), FUJITSU)
     $(warning forced to use FUJITSU BLASLAPACK)
     BLASLAPACK = FUJITSU
@@ -268,7 +290,7 @@ ifeq ($(COMPILER), FUJITSU)
   LIBSTDCXX =
   CLINKER = $(MPICXX)
   F90LINKER = $(MPICXX) --linkfortran
-  F90FPPFLAG = -fpp
+  F90FPPFLAG = -Cpp -Cfpp
   SCALAPACKLIB = -SCALAPACK
   SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2
 endif
@@ -276,7 +298,7 @@ endif
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
-TARGET += $(PREFIX) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr $(PREFIX)/modulefile
+TARGET += $(PREFIX) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr
 
 $(info TARGET is $(TARGET))
 
@@ -514,6 +536,7 @@ $(PREFIX)/.mumps: $(MUMPS_DEPS)
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
 	touch $@
 
+
 mumps: $(PREFIX)/.mumps
 .PHONY: mumps
 
@@ -528,7 +551,7 @@ $(TRILINOS)-Source: $(TRILINOS)-Source.tar.bz2
 
 TRILINOS_CMAKE_OPTS = \
 	-D Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
-	-D CMAKE_BUILD_TYPE=RELEASE \
+	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	-D CMAKE_C_COMPILER=$(MPICC) \
 	-D CMAKE_C_FLAGS="$(CFLAGS)" \
 	-D CMAKE_CXX_COMPILER=$(MPICXX) \
@@ -605,13 +628,14 @@ trilinos: $(PREFIX)/.trilinos
 $(FISTR):
 	if [ ! -d $(FISTR) ]; then \
 		git clone https://github.com/FrontISTR/FrontISTR.git $(FISTR); \
+		(cd $(FISTR); git checkout -b next origin/next); \
 	fi
 
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
+ifeq ($(fistrbuild), old)
 $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
-	(cd $(FISTR); git checkout -B next origin/next)
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
@@ -638,6 +662,73 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
 	touch $@
+else
+FISTR_CMAKE_OPTS = \
+	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+	-D CMAKE_C_COMPILER=$(MPICC) \
+	-D CMAKE_C_FLAGS="$(CFLAGS)" \
+	-D CMAKE_CXX_COMPILER=$(MPICXX) \
+	-D CMAKE_CXX_FLAGS="$(CFLAGS)" \
+	-D CMAKE_Fortran_COMPILER=$(MPIF90) \
+	-D CMAKE_Fortran_FLAGS="$(F90FLAGS) $(OMPFLAGS)" \
+	-D WITH_TOOLS=1 \
+	-D WITH_MPI=1 \
+	-D WITH_OPENMP=1 \
+	-D WITH_REFINER=0 \
+	-D WITH_REVOCAP=0 \
+	-D WITH_METIS=1 \
+	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
+	-D METIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libmetis.a \
+	-D WITH_PARMETIS=1 \
+	-D PARMETIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
+	-D PARMETIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libparmetis.a \
+	-D WITH_LAPACK=1 \
+	-D WITH_MUMPS=1 \
+	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
+	-D MUMPS_LIBRARIES="$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a" \
+	-D WITH_ML=1 \
+	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
+	-D WITH_DOC=0 \
+	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(FISTR)
+
+ifeq ($(BLASLAPACK), OpenBLAS)
+FISTR_CMAKE_OPTS += \
+	-D BLAS_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
+	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
+else
+  ifeq ($(BLASLAPACK), ATLAS)
+FISTR_CMAKE_OPTS += \
+	-D BLAS_LIBRARIES="$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a" \
+	-D LAPACK_LIBRARIES="$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a"
+  else
+    ifeq ($(BLASLAPACK), MKL)
+FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=1 \
+	-D BLA_VENDOR="Intel10_64lp"
+    else
+      ifeq ($(BLASLAPACK), FUJITSU)
+FISTR_CMAKE_OPTS += \
+	-D BLAS_LIBRARIES=-SSL2BLAMP \
+	-D LAPACK_LIBRARIES=-SSL2BLAMP \
+	-D SCALAPACK_LIBRARIES=-SCALAPACK \
+	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
+	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
+	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS)
+      endif
+    endif
+  endif
+endif
+
+#	-DBLAS_LINKER_FLAGS=-SSL2BLAMP \
+#	-DLAPACK_LINKER_FLAGS=-SSL2BLAMP \
+
+$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
+	(cd $(FISTR); mkdir build; cd build; \
+	cmake $(FISTR_CMAKE_OPTS) ..; \
+	make -j $(NJOBS); \
+	make install)
+	touch $@
+endif
 
 frontistr: $(PREFIX)/.frontistr
 .PHONY: frontistr
