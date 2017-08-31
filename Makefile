@@ -693,7 +693,6 @@ trilinos: $(PREFIX)/.trilinos
 $(FISTR):
 	if [ ! -d $(FISTR) ]; then \
 		git clone https://github.com/FrontISTR/FrontISTR.git $(FISTR); \
-		(cd $(FISTR); git checkout -b next origin/next); \
 	fi
 
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
@@ -773,6 +772,7 @@ FISTR_CMAKE_OPTS += \
     else
       ifeq ($(BLASLAPACK), FUJITSU)
 FISTR_CMAKE_OPTS += \
+	-D CMAKE_Fortran_MODDIR_FLAG=-M \
 	-D BLAS_LIBRARIES=-SSL2BLAMP \
 	-D LAPACK_LIBRARIES=-SSL2BLAMP \
 	-D SCALAPACK_LIBRARIES=-SCALAPACK \
