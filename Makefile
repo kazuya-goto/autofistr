@@ -86,11 +86,15 @@ CMAKE_VER_PATCH = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake ver
 DOWNLOAD_CMAKE = true
 ifneq ($(CMAKE_VER_MAJOR), "")
   $(info cmake-$(CMAKE_VER_MAJOR).$(CMAKE_VER_MINOR).$(CMAKE_VER_PATCH) detected)
-  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -ge $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
+  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -eq $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
     ifeq ("$(shell [ $(CMAKE_VER_MINOR) -ge $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
       $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
       DOWNLOAD_CMAKE = false
     endif
+  endif
+  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -gt $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
+    $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
+    DOWNLOAD_CMAKE = false
   endif
 endif
 $(info DOWNLOAD_CMAKE is $(DOWNLOAD_CMAKE))
@@ -320,6 +324,7 @@ ifeq ($(COMPILER), FUJITSU)
   OMPFLAGS = -Kopenmp
   #NOFOR_MAIN = -mlcmain=main
   NOFOR_MAIN =
+  NOFOR_MAIN_C = -DMAIN_COMP
   ifneq ($(BLASLAPACK), FUJITSU)
     $(warning forced to use FUJITSU BLASLAPACK)
     BLASLAPACK = FUJITSU
@@ -594,7 +599,7 @@ $(PREFIX)/.mumps: $(MUMPS_DEPS)
 	s!%blas_libs%!$(BLASLIB)!; \
 	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
-	s!%cflags%!$(CFLAGS) $(OMPFLAGS)!;" \
+	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
