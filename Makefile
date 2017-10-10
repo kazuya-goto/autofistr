@@ -731,6 +731,9 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
 	touch $@
+	echo Build completed.
+	echo Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin.
+	echo Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable).
 else
 FISTR_CMAKE_OPTS = \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
@@ -800,6 +803,9 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	make -j $(NJOBS); \
 	make install)
 	touch $@
+	echo Build completed.
+	echo Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin.
+	echo Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable).
 endif
 
 frontistr: $(PREFIX)/.frontistr
