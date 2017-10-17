@@ -119,7 +119,14 @@ ifeq ($(COMPILER), INTEL)
     CXXFLAGS = -O0 -g -traceback
     FCFLAGS = -O0 -g -CB -CU -traceback
   endif
-  OMPFLAGS = -qopenmp
+  IFORT_VER_MAJOR = $(shell ifort -v 2>&1 | perl -pe 's/ifort version //;s/\.\d+\.\d+.*//;')
+  $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
+  ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
+    OMPFLAGS = -qopenmp
+  else
+    OMPFLAGS = -openmp
+  endif
+  $(info OMPFLAGS is $(OMPFLAGS))
   NOFOR_MAIN = -nofor_main
   ifeq ($(BLASLAPACK), MKL)
     BLASLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
@@ -214,17 +221,7 @@ ifeq ($(COMPILER), GCC)
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), MKL)
     MKLROOT = $(INTELDIR)/mkl
-    BLASLIB = -Wl,--start-group \
-	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-	${MKLROOT}/lib/intel64/libmkl_core.a \
-	-Wl,--end-group -lgomp -ldl
-    LAPACKLIB = -Wl,--start-group \
-	${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-	${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-	${MKLROOT}/lib/intel64/libmkl_core.a \
-	${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
-	-Wl,--end-group -lgomp -ldl
+    # BLASLIB, LAPACKLIB, SCALAPACKLIB will be set later
   else
     ifeq ($(BLASLAPACK), OpenBLAS)
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
@@ -258,9 +255,15 @@ ifeq ($(COMPILER), GCC)
   MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     ifeq ($(BLASLAPACK), MKL)
-      SCALAPACKLIB = \
-	${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-	${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a
+      BLASLIB = -Wl,--start-group \
+        ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+        ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a \
+        ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+        ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+        ${MKLROOT}/lib/intel64/libmkl_core.a \
+        -Wl,--end-group -lgomp -ldl
+      LAPACKLIB = $(BLASLIB)
+      SCALAPACKLIB = $(BLASLIB)
     endif
   else
     ifeq ($(MPI), OpenMPI)
@@ -275,9 +278,15 @@ ifeq ($(COMPILER), GCC)
         TARGET += $(PREFIX)/.openmpi
       endif
       ifeq ($(BLASLAPACK), MKL)
-        SCALAPACKLIB = \
-		${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-		${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
+        BLASLIB = -Wl,--start-group \
+          ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+          ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
+          ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+          ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+          ${MKLROOT}/lib/intel64/libmkl_core.a \
+          -Wl,--end-group -lgomp -ldl
+        LAPACKLIB = $(BLASLIB)
+        SCALAPACKLIB = $(BLASLIB)
       endif
       LIBSTDCXX = -lmpi_cxx
     else
@@ -293,9 +302,15 @@ ifeq ($(COMPILER), GCC)
           TARGET += $(PREFIX)/.mpich
         endif
         ifeq ($(BLASLAPACK), MKL)
-          SCALAPACKLIB = \
-		${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-		${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a
+          BLASLIB = -Wl,--start-group \
+            ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+            ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a \
+            ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+            ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+            ${MKLROOT}/lib/intel64/libmkl_core.a \
+            -Wl,--end-group -lgomp -ldl
+          LAPACKLIB = $(BLASLIB)
+          SCALAPACKLIB = $(BLASLIB)
         endif
       else
         $(error unsupported MPI: $(MPI))
@@ -731,9 +746,11 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
 	touch $@
-	echo Build completed.
-	echo Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin.
-	echo Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable).
+	@echo
+	@echo "Build completed."
+	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
+	@echo "Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable)."
+	@echo
 else
 FISTR_CMAKE_OPTS = \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
@@ -803,9 +820,11 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	make -j $(NJOBS); \
 	make install)
 	touch $@
-	echo Build completed.
-	echo Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin.
-	echo Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable).
+	@echo
+	@echo "Build completed."
+	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
+	@echo "Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable)."
+	@echo
 endif
 
 frontistr: $(PREFIX)/.frontistr
@@ -877,7 +896,8 @@ clean:
 		rm -f $(PREFIX)/.trilinos; \
 	fi
 	if [ -d $(FISTR) ]; then \
-		(cd $(FISTR); make clean); \
+		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
+		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make clean); fi; \
 		rm -f $(PREFIX)/.fistr; \
 	fi
 .PHONY: clean
@@ -886,7 +906,8 @@ distclean:
 	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
 	rm -rf $(PREFIX)
 	if [ -d $(FISTR) ]; then \
-		(cd $(FISTR); make distclean); \
+		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
+		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make distclean); fi; \
 		rm -f $(PREFIX)/.fistr; \
 	fi
 .PHONY: distclean
