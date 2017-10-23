@@ -102,7 +102,7 @@ ifeq ($(DOWNLOAD_CMAKE), true)
   $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
   PACKAGES = $(CMAKE).tar.gz
   PKG_DIRS = $(CMAKE)
-  TARGET = $(PREFIX)/.cmake
+  TARGET = cmake
 endif
 
 
@@ -135,7 +135,7 @@ ifeq ($(COMPILER), INTEL)
     ifeq ($(BLASLAPACK), OpenBLAS)
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
       PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
-      TARGET += $(PREFIX)/.openblas $(PREFIX)/.scalapack
+      TARGET += openblas scalapack
       BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
       LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
       SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
@@ -143,7 +143,7 @@ ifeq ($(COMPILER), INTEL)
       ifeq ($(BLASLAPACK), ATLAS)
         PACKAGES += $(ATLAS).tar.bz2 $(SCALAPACK).tgz
         PKG_DIRS += $(ATLAS) $(SCALAPACK)
-        TARGET += $(PREFIX)/.atlas $(PREFIX)/.scalapack
+        TARGET += atlas scalapack
         BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
         LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
         SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
@@ -168,28 +168,28 @@ ifeq ($(COMPILER), INTEL)
     endif
   else
     ifeq ($(MPI), OpenMPI)
-      MPI_INST = $(PREFIX)/.openmpi
+      MPI_INST = openmpi
       MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
       MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
       MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
       MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
       PACKAGES += $(OPENMPI).tar.bz2
       PKG_DIRS += $(OPENMPI)
-      TARGET += $(PREFIX)/.openmpi
+      TARGET += openmpi
       ifeq ($(BLASLAPACK), MKL)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
       endif
       LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
-        MPI_INST = $(PREFIX)/.mpich
+        MPI_INST = mpich
         MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
         MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
         MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
         PACKAGES += $(MPICH).tar.gz
         PKG_DIRS += $(MPICH)
-        TARGET += $(PREFIX)/.mpich
+        TARGET += mpich
         ifeq ($(BLASLAPACK), MKL)
           SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
         endif
@@ -226,7 +226,7 @@ ifeq ($(COMPILER), GCC)
     ifeq ($(BLASLAPACK), OpenBLAS)
       PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
       PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
-      TARGET += $(PREFIX)/.openblas $(PREFIX)/.scalapack
+      TARGET += openblas scalapack
       BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
       LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
       SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
@@ -234,7 +234,7 @@ ifeq ($(COMPILER), GCC)
       ifeq ($(BLASLAPACK), ATLAS)
         PACKAGES += $(ATLAS).tar.bz2 $(SCALAPACK).tgz
         PKG_DIRS += $(ATLAS) $(SCALAPACK)
-        TARGET += $(PREFIX)/.atlas $(PREFIX)/.scalapack
+        TARGET += atlas scalapack
         BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
         LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
         SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
@@ -268,14 +268,14 @@ ifeq ($(COMPILER), GCC)
   else
     ifeq ($(MPI), OpenMPI)
       ifeq ($(DOWNLOAD_MPI), true)
-        MPI_INST = $(PREFIX)/.openmpi
+        MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
         MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
         MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
-        TARGET += $(PREFIX)/.openmpi
+        TARGET += openmpi
       endif
       ifeq ($(BLASLAPACK), MKL)
         BLASLIB = -Wl,--start-group \
@@ -292,14 +292,14 @@ ifeq ($(COMPILER), GCC)
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
-          MPI_INST = $(PREFIX)/.mpich
+          MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
           MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
           MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
-          TARGET += $(PREFIX)/.mpich
+          TARGET += mpich
         endif
         ifeq ($(BLASLAPACK), MKL)
           BLASLIB = -Wl,--start-group \
@@ -368,11 +368,11 @@ endif
 
 PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
-TARGET += $(PREFIX) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps $(PREFIX)/.trilinos $(PREFIX)/.frontistr
+TARGET += metis parmetis scotch mumps trilinos frontistr
 
 $(info TARGET is $(TARGET))
 
-all: $(TARGET)
+all: $(PREFIX) $(TARGET)
 .PHONY: all
 
 download: $(PACKAGES)
@@ -394,10 +394,10 @@ $(CMAKE): $(CMAKE).tar.gz
 	tar zxvf $(CMAKE).tar.gz
 	touch $@
 
-$(PREFIX)/.cmake: $(CMAKE)
+$(PREFIX)/$(CMAKE)/bin/cmake: $(CMAKE)
 	(cd $(CMAKE) && ./bootstrap --parallel=$(NJOBS) --prefix=$(PREFIX)/$(CMAKE) && make -j $(NJOBS) && make install)
 
-cmake: $(PREFIX)/.cmake
+cmake: $(PREFIX)/$(CMAKE)/bin/cmake
 .PHONY: cmake
 
 
@@ -409,15 +409,14 @@ $(OPENMPI): $(OPENMPI).tar.bz2
 	tar jxvf $(OPENMPI).tar.bz2
 	touch $@
 
-$(PREFIX)/.openmpi: $(OPENMPI)
+$(PREFIX)/$(OPENMPI)/bin/mpicc: $(OPENMPI)
 	(cd $(OPENMPI); mkdir build; cd build; \
 	../configure CC=$(CC) CXX=$(CXX) F77=$(FC) FC=$(FC) \
 	CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" FFLAGS="$(FCFLAGS)" FCFLAGS="$(FCFLAGS)" \
 	--prefix=$(PREFIX)/$(OPENMPI); \
 	make -j $(NJOBS); make install)
-	touch $@
 
-openmpi: $(PREFIX)/.openmpi
+openmpi: $(PREFIX)/$(OPENMPI)/bin/mpicc
 .PHONY: openmpi
 
 
@@ -429,16 +428,15 @@ $(MPICH): $(MPICH).tar.gz
 	tar zxvf $(MPICH).tar.gz
 	touch $@
 
-$(PREFIX)/.mpich: $(MPICH)
+$(PREFIX)/$(MPICH)/bin/mpicc: $(MPICH)
 	(cd $(MPICH); mkdir build; cd build; \
 	../configure CC=$(CC) CXX=$(CXX) F77=$(FC) FC=$(FC) --enable-fast=all \
 	MPICHLIB_CFLAGS="$(CFLAGS)" MPICHLIB_FFLAGS="$(FCFLAGS)" \
 	MPICHLIB_CXXFLAGS="$(CXXFLAGS)" MPICHLIB_FCFLAGS="$(FCFLAGS)" \
 	-prefix=$(PREFIX)/$(MPICH); \
 	make -j $(NJOBS); make install)
-	touch $@
 
-mpich: $(PREFIX)/.mpich
+mpich: $(PREFIX)/$(MPICH)/bin/mpicc
 .PHONY: mpich
 
 
@@ -451,11 +449,10 @@ $(OPENBLAS): $(OPENBLAS).tar.gz
 	tar zxvf $(OPENBLAS).tar.gz
 	touch $@
 
-$(PREFIX)/.openblas: $(OPENBLAS)
+$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a: $(OPENBLAS)
 	(cd $(OPENBLAS); make USE_OPENMP=1 NO_SHARED=1 CC=$(CC) FC=$(FC); make install NO_SHARED=1 PREFIX=$(PREFIX)/$(OPENBLAS))
-	touch $@
 
-openblas: $(PREFIX)/.openblas
+openblas: $(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 .PHONY: openblas
 
 
@@ -471,19 +468,18 @@ $(ATLAS): $(ATLAS).tar.bz2
 	mv ATLAS $@
 	touch $@
 
-$(PREFIX)/.atlas: $(ATLAS) lapack-3.7.0.tgz
+$(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) lapack-3.7.0.tgz
 	(cd $(ATLAS); mkdir build; cd build; \
 	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/lapack-3.7.0.tgz \
 	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS); \
 	make build; make install)
-	touch $@
 
 # to force change compiler, add the following to configure option
 #	-C ac $(CC) -C if $(FC) \
 # to force change compiler flags, add the following to configure option
 #	-F ac "$(CFLAGS)" -F if "$(FCFLAGS)" \
 
-atlas: $(PREFIX)/.atlas
+atlas: $(PREFIX)/$(ATLAS)/lib/libatlas.a
 .PHONY: atlas
 
 
@@ -504,23 +500,22 @@ SCALAPACK_CMAKE_OPTS = \
 
 ifeq ($(BLASLAPACK), OpenBLAS)
 SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.so \
-	-D LAPACK_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.so
+	-D BLAS_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
+	-D LAPACK_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 else
 SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_atlas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libatlas.so \
-	-D BLAS_f77blas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libf77blas.so \
-	-D LAPACK_LA_ACK_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/liblapack_atlas.so
+	-D BLAS_atlas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libatlas.a \
+	-D BLAS_f77blas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libf77blas.a \
+	-D LAPACK_LA_ACK_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/liblapack_atlas.a
 endif
 
-$(PREFIX)/.scalapack: $(SCALAPACK) $(MPI_INST)
+$(PREFIX)/$(SCALAPACK)/lib/libscalapack.a: $(SCALAPACK) $(MPI_INST)
 	(cd $(SCALAPACK); mkdir build; cd build; \
 	cmake $(SCALAPACK_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
 	make install)
-	touch $@
 
-scalapack: $(PREFIX)/.scalapack
+scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 .PHONY: scalapack
 
 
@@ -532,12 +527,11 @@ $(METIS): $(METIS).tar.gz
 	tar zxvf $(METIS).tar.gz
 	touch $@
 
-$(PREFIX)/.metis: $(METIS)
+$(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
 	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) && \
 	make --no-print-directory -j $(NJOBS) install)
-	touch $@
 
-metis: $(PREFIX)/.metis
+metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 .PHONY: metis
 
 
@@ -549,12 +543,11 @@ $(PARMETIS): $(PARMETIS).tar.gz
 	tar zxvf $(PARMETIS).tar.gz
 	touch $@
 
-$(PREFIX)/.parmetis: $(PARMETIS) $(MPI_INST)
+$(PREFIX)/$(PARMETIS)/lib/libparmetis.a: $(PARMETIS) $(MPI_INST)
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(MPICC) cxx=$(MPICXX) && \
 	make --no-print-directory -j $(NJOBS) install)
-	touch $@
 
-parmetis: $(PREFIX)/.parmetis
+parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 .PHONY: parmetis
 
 
@@ -566,7 +559,7 @@ $(SCOTCH): $(SCOTCH).tar.gz
 	tar zxvf $(SCOTCH).tar.gz
 	touch $@
 
-$(PREFIX)/.scotch: $(SCOTCH) $(MPI_INST)
+$(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 	perl -pe \
 	"if(/^CCS/){s!= .*!= $(CC)!;} \
 	elsif(/^CCP/){s!= .*!= $(MPICC)!;} \
@@ -581,9 +574,8 @@ $(PREFIX)/.scotch: $(SCOTCH) $(MPI_INST)
 	if [ ! -d $(PREFIX)/$(SCOTCH) ]; then mkdir $(PREFIX)/$(SCOTCH); fi && \
 	make prefix=$(PREFIX)/$(SCOTCH) install && \
 	cp -f ../lib/*esmumps*.a $(PREFIX)/$(SCOTCH)/lib)
-	touch $@
 
-scotch: $(PREFIX)/.scotch
+scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 .PHONY: scotch
 
 
@@ -595,15 +587,15 @@ $(MUMPS): $(MUMPS).tar.gz
 	tar zxvf $(MUMPS).tar.gz
 	touch $@
 
-MUMPS_DEPS = $(MUMPS) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch
+MUMPS_DEPS = $(MUMPS) metis parmetis scotch
 ifeq ($(BLASLAPACK), OpenBLAS)
-MUMPS_DEPS += $(PREFIX)/.scalapack
+MUMPS_DEPS += scalapack
 endif
 ifeq ($(BLASLAPACK), ATLAS)
-MUMPS_DEPS += $(PREFIX)/.scalapack
+MUMPS_DEPS += scalapack
 endif
 
-$(PREFIX)/.mumps: $(MUMPS_DEPS)
+$(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -619,10 +611,9 @@ $(PREFIX)/.mumps: $(MUMPS_DEPS)
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
-	touch $@
 
 
-mumps: $(PREFIX)/.mumps
+mumps: $(PREFIX)/$(MUMPS)/lib/libdmumps.a
 .PHONY: mumps
 
 
@@ -699,14 +690,13 @@ TRILINOS_CMAKE_OPTS += \
   endif
 endif
 
-$(PREFIX)/.trilinos: $(TRILINOS)-Source $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.scotch $(PREFIX)/.mumps
+$(PREFIX)/$(TRILINOS)/lib/libml.a: $(TRILINOS)-Source metis parmetis scotch mumps
 	(cd $(TRILINOS)-Source; mkdir build; cd build; \
 	cmake $(TRILINOS_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
 	make install)
-	touch $@
 
-trilinos: $(PREFIX)/.trilinos
+trilinos: $(PREFIX)/$(TRILINOS)/lib/libml.a
 .PHONY: trilinos
 
 
@@ -719,7 +709,7 @@ SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscot
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
 ifeq ($(fistrbuild), old)
-$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
@@ -745,7 +735,6 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	(cd hecmw1 && make) && (cd fistr1 && make) && \
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
-	touch $@
 	@echo
 	@echo "Build completed."
 	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
@@ -814,12 +803,11 @@ FISTR_CMAKE_OPTS += \
   endif
 endif
 
-$(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.mumps $(PREFIX)/.trilinos
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	(cd $(FISTR); mkdir build; cd build; cmake --version; \
 	cmake $(FISTR_CMAKE_OPTS) ..; \
 	make -j $(NJOBS); \
 	make install)
-	touch $@
 	@echo
 	@echo "Build completed."
 	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
@@ -827,7 +815,7 @@ $(PREFIX)/.frontistr: $(FISTR) $(PREFIX)/.metis $(PREFIX)/.parmetis $(PREFIX)/.m
 	@echo
 endif
 
-frontistr: $(PREFIX)/.frontistr
+frontistr: $(PREFIX)/$(FISTR)/bin/fistr1
 .PHONY: frontistr
 
 
@@ -854,51 +842,39 @@ modulefile: $(PREFIX)/modulefile
 
 
 clean:
-	rm -f $(TARGET)
 	if [ -d $(OPENMPI) ]; then \
 		rm -rf $(OPENMPI)/build; \
-		rm -f $(PREFIX)/.openmpi; \
 	fi
 	if [ -d $(MPICH) ]; then \
 		rm -rf $(MPICH)/build; \
-		rm -f $(PREFIX)/.mpich; \
 	fi
 	if [ -d $(OPENBLAS) ]; then \
 		(cd $(OPENBLAS) && make clean); \
-		rm -f $(PREFIX)/.openblas; \
 	fi
 	if [ -d $(ATLAS) ]; then \
 		rm -rf $(ATLAS)/build; \
-		rm -f $(PREFIX)/.atlas; \
 	fi
 	if [ -d $(SCALAPACK) ]; then \
 		rm -rf $(SCALAPACK)/build; \
-		rm -f $(PREFIX)/.scalapack; \
 	fi
 	if [ -d $(METIS) ]; then \
 		(cd $(METIS) && make distclean); \
-		rm -f $(PREFIX)/.metis; \
 	fi
 	if [ -d $(PARMETIS) ]; then \
 		(cd $(PARMETIS) && make distclean); \
-		rm -f $(PREFIX)/.parmetis; \
 	fi
 	if [ -d $(SCOTCH) ]; then \
 		(cd $(SCOTCH)/src && make realclean); \
-		rm -f $(PREFIX)/.scotch; \
 	fi
 	if [ -d $(MUMPS) ]; then \
 		(cd $(MUMPS) && make clean); \
-		rm -f $(PREFIX)/.mumps; \
 	fi
 	if [ -d $(TRILINOS)-Source ]; then \
 		rm -rf $(TRILINOS)-Source/build; \
-		rm -f $(PREFIX)/.trilinos; \
 	fi
 	if [ -d $(FISTR) ]; then \
 		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
 		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make clean); fi; \
-		rm -f $(PREFIX)/.fistr; \
 	fi
 .PHONY: clean
 
