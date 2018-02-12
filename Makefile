@@ -21,7 +21,7 @@ SCALAPACK = scalapack-2.0.2
 METIS     = metis-5.1.0
 PARMETIS  = parmetis-4.0.3
 SCOTCH    = scotch_6.0.4
-MUMPS     = MUMPS_5.1.1
+MUMPS     = MUMPS_5.1.2
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-12.6.4
 else
