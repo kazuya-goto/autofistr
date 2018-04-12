@@ -1,26 +1,17 @@
 # BUILD_TYPE: {RELEASE, DEBUG}
-BUILD_TYPE = DEBUG
+BUILD_TYPE = RELEASE
 
 # COMPILER: {INTEL, GCC, FUJITSU}
-#COMPILER = INTEL
-COMPILER = GCC
-#COMPILER = FUJITSU
+COMPILER = INTEL
 
 # MPI: {IMPI, OpenMPI, MPICH, FUJITSU}
-#MPI = IMPI
-MPI = OpenMPI
-#MPI = MPICH
-#MPI = FUJITSU
+MPI = IMPI
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
 
 # BLASLAPACK: {MKL, OpenBLAS, ATLAS, FUJITSU, SYSTEM}
-#BLASLAPACK = MKL
-#BLASLAPACK = OpenBLAS
-#BLASLAPACK = ATLAS
-#BLASLAPACK = FUJITSU
-BLASLAPACK = SYSTEM
+BLASLAPACK = MKL
 
 # when BLASLAPACK==SYSTEM, BLASLIB and LAPACKLIB can be specified
 # BLASLIB (optional): system BLAS lib (default: -lblas)
@@ -30,8 +21,9 @@ BLASLAPACK = SYSTEM
 # SCALAPACKLIB (optional): system LAPACK lib (default: -llapack)
 #SCALAPACKLIB = -lscalapack
 
-# INTELDIR (optional): Intel tools root dir (default: /opt/intel)
-#INTELDIR = /data/opt/intel
-
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
+
+# misc. options
+#fistrbuild = old
+#metisversion = 4

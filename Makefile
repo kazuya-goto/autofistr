@@ -1,7 +1,6 @@
 include Makefile.in
 
 BUILD_TYPE ?= RELEASE
-INTELDIR ?= /opt/intel
 NJOBS ?= 1
 
 
@@ -18,14 +17,19 @@ MPICH     = mpich-3.2
 OPENBLAS  = OpenBLAS-0.2.19
 ATLAS     = atlas3.10.3
 SCALAPACK = scalapack-2.0.2
-METIS     = metis-5.1.0
-PARMETIS  = parmetis-4.0.3
+ifeq ($(metisversion), 4)
+  METIS     = metis-4.0.3
+  PARMETIS  = ParMetis-3.2.0
+else
+  METIS     = metis-5.1.0
+  PARMETIS  = parmetis-4.0.3
+endif
 SCOTCH    = scotch_6.0.4
 MUMPS     = MUMPS_5.1.2
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-12.6.4
 else
-  TRILINOS  = trilinos-12.10.1
+  TRILINOS  = trilinos-12.12.1
 endif
 FISTR     = FrontISTR
 
@@ -79,9 +83,9 @@ CMAKE_MINVER_MINOR = 8
 
 export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 
-CMAKE_VER_MAJOR = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
-CMAKE_VER_MINOR = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
-CMAKE_VER_PATCH = $(shell PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; print;}')
+CMAKE_VER_MAJOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
+CMAKE_VER_MINOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
+CMAKE_VER_PATCH = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; print;}')
 
 DOWNLOAD_CMAKE = true
 ifneq ($(CMAKE_VER_MAJOR), "")
@@ -119,7 +123,7 @@ ifeq ($(COMPILER), INTEL)
     CXXFLAGS = -O0 -g -traceback
     FCFLAGS = -O0 -g -CB -CU -traceback
   endif
-  IFORT_VER_MAJOR = $(shell ifort -v 2>&1 | perl -pe 's/ifort version //;s/\.\d+\.\d+.*//;')
+  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\.\d+\.\d+.*//;')
   $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
   ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
     OMPFLAGS = -qopenmp
@@ -220,7 +224,6 @@ ifeq ($(COMPILER), GCC)
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), MKL)
-    MKLROOT = $(INTELDIR)/mkl
     # BLASLIB, LAPACKLIB, SCALAPACKLIB will be set later
   else
     ifeq ($(BLASLAPACK), OpenBLAS)
@@ -280,7 +283,7 @@ ifeq ($(COMPILER), GCC)
       ifeq ($(BLASLAPACK), MKL)
         BLASLIB = -Wl,--start-group \
           ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-          ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a
+          ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
           ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
           ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
           ${MKLROOT}/lib/intel64/libmkl_core.a \
@@ -366,9 +369,14 @@ ifeq ("$(shell uname)", "Darwin")
   SCOTCH_MAKEFILE_INC = Makefile.inc.i686_mac_darwin10
 endif
 
-PACKAGES += $(METIS).tar.gz $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
-PKG_DIRS += $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
-TARGET += metis parmetis scotch mumps trilinos frontistr
+ifneq ($(metisversion), 4)
+  PACKAGES += $(METIS).tar.gz
+  PKG_DIRS += $(METIS)
+  TARGET += metis
+endif
+PACKAGES += $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
+PKG_DIRS += $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
+TARGET += parmetis scotch mumps trilinos frontistr
 
 $(info TARGET is $(TARGET))
 
@@ -520,7 +528,11 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 
 
 $(METIS).tar.gz:
+ifeq ($(metisversion), 4)
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$(METIS).tar.gz
+else
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$(METIS).tar.gz
+endif
 
 $(METIS): $(METIS).tar.gz
 	rm -rf $@
@@ -528,15 +540,29 @@ $(METIS): $(METIS).tar.gz
 	touch $@
 
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
+ifeq ($(metisversion), 4)
+	perl -i -pe \
+	"if(/^CC/){s!= .*!= $(CC)!;} \
+	elsif(/^OPTFLAGS/){s!= .*!= $(CFLAGS)!;}" \
+	$(METIS)/Makefile.in
+	(cd $(METIS) && make && \
+	mkdir -p $(PREFIX)/$(PARMETIS)/lib && cp libmetis.a $(PREFIX)/$(PARMETIS)/lib && \
+	mkdir -p $(PREFIX)/$(PARMETIS)/include && cp Lib/*.h $(PREFIX)/$(PARMETIS)/include)
+else
 	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) && \
 	make --no-print-directory -j $(NJOBS) install)
+endif
 
 metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 .PHONY: metis
 
 
 $(PARMETIS).tar.gz:
+ifeq ($(metisversion), 4)
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$(PARMETIS).tar.gz
+else
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$(PARMETIS).tar.gz
+endif
 
 $(PARMETIS): $(PARMETIS).tar.gz
 	rm -rf $@
@@ -544,8 +570,23 @@ $(PARMETIS): $(PARMETIS).tar.gz
 	touch $@
 
 $(PREFIX)/$(PARMETIS)/lib/libparmetis.a: $(PARMETIS) $(MPI_INST)
+ifeq ($(metisversion), 4)
+	perl -i -pe \
+	"if(/^CC/){s!= .*!= $(MPICC)!;} \
+	elsif(/^OPTFLAGS/){s!= .*!= $(CFLAGS)!;} \
+	elsif(/^LD/){s!= .*!= $(MPICC)!;}" \
+	$(PARMETIS)/Makefile.in
+	(cd $(PARMETIS) && make && \
+	if [ ! -d $(PREFIX)/$(PARMETIS)/lib ]; then mkdir -p $(PREFIX)/$(PARMETIS)/lib; fi && \
+	cp lib*.a $(PREFIX)/$(PARMETIS)/lib && \
+	if [ ! -d $(PREFIX)/$(PARMETIS)/include ]; then mkdir -p $(PREFIX)/$(PARMETIS)/include; fi && \
+	cp *.h $(PREFIX)/$(PARMETIS)/include && \
+	if [ ! -d $(PREFIX)/$(PARMETIS)/include/METISLib ]; then mkdir -p $(PREFIX)/$(PARMETIS)/include/METISLib; fi && \
+	cp METISLib/*.h $(PREFIX)/$(PARMETIS)/include/METISLib)
+else
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(MPICC) cxx=$(MPICXX) && \
 	make --no-print-directory -j $(NJOBS) install)
+endif
 
 parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 .PHONY: parmetis
@@ -608,6 +649,13 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
+ifeq ($(metisversion), 4)
+	perl -i -pe \
+	"s!Dmetis!Dmetis4!; \
+	s!Dparmetis!Dparmetis3!; \
+	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
+	$(MUMPS)/Makefile.inc
+endif
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
@@ -675,11 +723,11 @@ TRILINOS_CMAKE_OPTS += \
   else
     ifeq ($(BLASLAPACK), MKL)
 TRILINOS_CMAKE_OPTS += \
-	-D BLAS_INCLUDE_DIRS:PATH=$(INTELDIR)/mkl/include \
-	-D BLAS_LIBRARY_DIRS:PATH="$(INTELDIR)/mkl/lib/intel64;$(INTELDIR)/lib/intel64" \
-	-D BLAS_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5" \
-	-D LAPACK_LIBRARY_DIRS:PATH="$(INTELDIR)/mkl/lib/intel64;$(INTELDIR)/lib/intel64" \
-	-D LAPACK_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_intel_thread;mkl_core;iomp5"
+	-D BLAS_INCLUDE_DIRS:PATH=$(MKLROOT)/include \
+	-D BLAS_LIBRARY_DIRS:PATH="$(MKLROOT)/lib/intel64" \
+	-D BLAS_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_sequential;mkl_core" \
+	-D LAPACK_LIBRARY_DIRS:PATH="$(MKLROOT)/lib/intel64" \
+	-D LAPACK_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_sequential;mkl_core"
     else
       ifeq ($(BLASLAPACK), FUJITSU)
 TRILINOS_CMAKE_OPTS += \
@@ -730,6 +778,11 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	s!%fpp%!$(F90FPPFLAG)!; \
 	s!%f90linker%!$(F90LINKER)!;" \
 	FrontISTR_Makefile.conf > $(FISTR)/Makefile.conf
+ifeq ($(metisversion), 4)
+	perl -i -pe \
+	"if(/^METISINCDIR/){s!include!include/METISLib!;}" \
+	$(FISTR)/Makefile.conf
+endif
 	(cd $(FISTR) && \
 	./setup.sh -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack && \
 	(cd hecmw1 && make) && (cd fistr1 && make) && \
@@ -857,12 +910,21 @@ clean:
 	if [ -d $(SCALAPACK) ]; then \
 		rm -rf $(SCALAPACK)/build; \
 	fi
+ifeq ($(metisversion), 4)
+	if [ -d $(METIS) ]; then \
+		(cd $(METIS) && make clean); \
+	fi
+	if [ -d $(PARMETIS) ]; then \
+		(cd $(PARMETIS) && make clean); \
+	fi
+else
 	if [ -d $(METIS) ]; then \
 		(cd $(METIS) && make distclean); \
 	fi
 	if [ -d $(PARMETIS) ]; then \
 		(cd $(PARMETIS) && make distclean); \
 	fi
+endif
 	if [ -d $(SCOTCH) ]; then \
 		(cd $(SCOTCH)/src && make realclean); \
 	fi
