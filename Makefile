@@ -11,7 +11,7 @@ $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
 
-CMAKE     = cmake-3.10.2
+CMAKE     = cmake-2.8.11
 OPENMPI   = openmpi-2.1.0
 MPICH     = mpich-3.2
 OPENBLAS  = OpenBLAS-0.2.19
@@ -80,6 +80,8 @@ endif
 # detect SYSTEM CMAKE
 CMAKE_MINVER_MAJOR = 2
 CMAKE_MINVER_MINOR = 8
+CMAKE_MINVER_PATCH = 11
+CMAKE_MINVER=$(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR).$(CMAKE_MINVER_PATCH)
 
 export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 
@@ -91,22 +93,27 @@ DOWNLOAD_CMAKE = true
 ifneq ($(CMAKE_VER_MAJOR), "")
   $(info cmake-$(CMAKE_VER_MAJOR).$(CMAKE_VER_MINOR).$(CMAKE_VER_PATCH) detected)
   ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -eq $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
-    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -ge $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
-      $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
+    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -eq $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
+      ifeq ("$(shell [ $(CMAKE_VER_PATCH) -ge $(CMAKE_MINVER_PATCH) ] && echo true)", "true")
+        DOWNLOAD_CMAKE = false
+      endif
+    endif
+    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -gt $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
       DOWNLOAD_CMAKE = false
     endif
   endif
   ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -gt $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
-    $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
     DOWNLOAD_CMAKE = false
   endif
 endif
 $(info DOWNLOAD_CMAKE is $(DOWNLOAD_CMAKE))
 ifeq ($(DOWNLOAD_CMAKE), true)
-  $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR))
+  $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER))
   PACKAGES = $(CMAKE).tar.gz
   PKG_DIRS = $(CMAKE)
   TARGET = cmake
+else
+  $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER))
 endif
 
 
@@ -395,7 +402,7 @@ $(PREFIX):
 
 
 $(CMAKE).tar.gz:
-	wget https://cmake.org/files/v3.9/$(CMAKE).tar.gz
+	wget https://cmake.org/files/v2.8/$(CMAKE).tar.gz
 
 $(CMAKE): $(CMAKE).tar.gz
 	rm -rf $@
@@ -539,16 +546,10 @@ $(METIS): $(METIS).tar.gz
 	tar zxvf $(METIS).tar.gz
 	touch $@
 
-$(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
 ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"if(/^CC/){s!= .*!= $(CC)!;} \
-	elsif(/^OPTFLAGS/){s!= .*!= $(CFLAGS)!;}" \
-	$(METIS)/Makefile.in
-	(cd $(METIS) && make && \
-	mkdir -p $(PREFIX)/$(PARMETIS)/lib && cp libmetis.a $(PREFIX)/$(PARMETIS)/lib && \
-	mkdir -p $(PREFIX)/$(PARMETIS)/include && cp Lib/*.h $(PREFIX)/$(PARMETIS)/include)
+$(PREFIX)/$(PARMETIS)/lib/libmetis.a: parmetis
 else
+$(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
 	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) && \
 	make --no-print-directory -j $(NJOBS) install)
 endif
