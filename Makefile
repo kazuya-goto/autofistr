@@ -11,7 +11,7 @@ $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
 
-CMAKE     = cmake-3.9.1
+CMAKE     = cmake-3.10.2
 OPENMPI   = openmpi-2.1.0
 MPICH     = mpich-3.2
 OPENBLAS  = OpenBLAS-0.2.19

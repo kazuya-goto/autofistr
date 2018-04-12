@@ -12,8 +12,8 @@ OpenBLAS-0.2.19
 ParMetis-3.2.0.tar.gz
 ParMetis-3.2.0
 atlas3.10.3.tar.bz2
-cmake-3.9.1.tar.gz
-cmake-3.9.1
+cmake-3.[0-9]*.[0-9].tar.gz
+cmake-3.[0-9]*.[0-9]
 env2-code
 lapack-3.7.0.tgz
 metis-4.0.3.tar.gz
