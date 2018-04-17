@@ -11,10 +11,10 @@ $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
 
-CMAKE     = cmake-2.8.11
-OPENMPI   = openmpi-2.1.0
-MPICH     = mpich-3.2
-OPENBLAS  = OpenBLAS-0.2.19
+CMAKE     = cmake-3.9.6
+OPENMPI   = openmpi-3.0.1
+MPICH     = mpich-3.2.1
+OPENBLAS  = OpenBLAS-0.2.20
 ATLAS     = atlas3.10.3
 SCALAPACK = scalapack-2.0.2
 ifeq ($(metisversion), 4)
@@ -116,6 +116,11 @@ else
   $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER))
 endif
 
+ifeq ($(BLASLAPACK), MKL)
+  ifeq ("$(MKLROOT)", "")
+    $(error MKLROOT not set; please make sure the environment variables are correctly set)
+  endif
+endif
 
 ifeq ($(COMPILER), INTEL)
   CC = icc
@@ -402,7 +407,7 @@ $(PREFIX):
 
 
 $(CMAKE).tar.gz:
-	wget https://cmake.org/files/v2.8/$(CMAKE).tar.gz
+	wget https://cmake.org/files/v3.9/$(CMAKE).tar.gz
 
 $(CMAKE): $(CMAKE).tar.gz
 	rm -rf $@
@@ -417,7 +422,7 @@ cmake: $(PREFIX)/$(CMAKE)/bin/cmake
 
 
 $(OPENMPI).tar.bz2:
-	wget https://www.open-mpi.org/software/ompi/v2.1/downloads/$(OPENMPI).tar.bz2
+	wget https://www.open-mpi.org/software/ompi/v3.0/downloads/$(OPENMPI).tar.bz2
 
 $(OPENMPI): $(OPENMPI).tar.bz2
 	rm -rf $@
@@ -436,7 +441,7 @@ openmpi: $(PREFIX)/$(OPENMPI)/bin/mpicc
 
 
 $(MPICH).tar.gz:
-	wget http://www.mpich.org/static/downloads/3.2/$(MPICH).tar.gz
+	wget http://www.mpich.org/static/downloads/3.2.1/$(MPICH).tar.gz
 
 $(MPICH): $(MPICH).tar.gz
 	rm -rf $@
@@ -456,8 +461,8 @@ mpich: $(PREFIX)/$(MPICH)/bin/mpicc
 
 
 $(OPENBLAS).tar.gz:
-	wget http://github.com/xianyi/OpenBLAS/archive/v0.2.19.tar.gz
-	mv v0.2.19.tar.gz $@
+	wget https://github.com/xianyi/OpenBLAS/archive/v0.2.20.tar.gz
+	mv v0.2.20.tar.gz $@
 
 $(OPENBLAS): $(OPENBLAS).tar.gz
 	rm -rf $@
@@ -474,8 +479,8 @@ openblas: $(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 $(ATLAS).tar.bz2:
 	wget https://downloads.sourceforge.net/project/math-atlas/Stable/3.10.3/$(ATLAS).tar.bz2
 
-lapack-3.7.0.tgz:
-	wget http://www.netlib.org/lapack/lapack-3.7.0.tgz
+lapack-3.8.0.tar.gz:
+	wget http://www.netlib.org/lapack/lapack-3.8.0.tar.gz
 
 $(ATLAS): $(ATLAS).tar.bz2
 	rm -rf $@
@@ -483,9 +488,9 @@ $(ATLAS): $(ATLAS).tar.bz2
 	mv ATLAS $@
 	touch $@
 
-$(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) lapack-3.7.0.tgz
+$(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) lapack-3.8.0.tar.gz
 	(cd $(ATLAS); mkdir build; cd build; \
-	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/lapack-3.7.0.tgz \
+	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/lapack-3.8.0.tar.gz \
 	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS); \
 	make build; make install)
 
