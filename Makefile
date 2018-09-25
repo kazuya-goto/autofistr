@@ -1,15 +1,30 @@
 include Makefile.in
 
+##########################
+### Parameter Settings ###
+##########################
+
+TOPDIR = $(CURDIR)
+
+###
+### Default values
+###
+
 BUILD_TYPE ?= RELEASE
 NJOBS ?= 1
 
-
-TOPDIR = $(CURDIR)
+###
+### Echo basic settings
+###
 
 $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
 $(info BLASLAPACK is $(BLASLAPACK))
 
+
+###
+### Package versions
+###
 
 CMAKE     = cmake-3.9.6
 OPENMPI   = openmpi-3.0.1
@@ -31,6 +46,7 @@ ifeq ($(COMPILER), FUJITSU)
 else
   TRILINOS  = trilinos-12.12.1
 endif
+REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
 
 
@@ -38,8 +54,10 @@ PACKAGES =
 PKG_DIRS =
 TARGET =
 
+###
+### set PREFIX
+###
 
-# set PREFIX
 ifeq ($(COMPILER), FUJITSU)
   PREFIX = $(TOPDIR)/$(COMPILER)
 else
@@ -76,8 +94,10 @@ else
   PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
 endif
 
+###
+### detect SYSTEM CMAKE
+###
 
-# detect SYSTEM CMAKE
 CMAKE_MINVER_MAJOR = 2
 CMAKE_MINVER_MINOR = 8
 CMAKE_MINVER_PATCH = 11
@@ -115,6 +135,10 @@ ifeq ($(DOWNLOAD_CMAKE), true)
 else
   $(info SYSTEM CMAKE satisfies minimum required version $(CMAKE_MINVER))
 endif
+
+###
+### Compiler, BLAS, LAPACK ScaLAPACK settings
+###
 
 ifeq ($(BLASLAPACK), MKL)
   ifeq ("$(MKLROOT)", "")
@@ -377,9 +401,17 @@ ifeq ($(COMPILER), FUJITSU)
   SCOTCH_MAKEFILE_INC = Makefile.inc.x86-64_pc_linux2
 endif
 
+###
+### Special settings for MAC
+###
+
 ifeq ("$(shell uname)", "Darwin")
   SCOTCH_MAKEFILE_INC = Makefile.inc.i686_mac_darwin10
 endif
+
+###
+### External packages and targets
+###
 
 ifneq ($(metisversion), 4)
   PACKAGES += $(METIS).tar.gz
@@ -388,9 +420,26 @@ ifneq ($(metisversion), 4)
 endif
 PACKAGES += $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
 PKG_DIRS += $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
-TARGET += parmetis scotch mumps trilinos frontistr
+TARGET += parmetis scotch mumps trilinos
+
+ifeq ("$(shell [ -f $(REFINER).tar.gz ] && echo true)", "true")
+  WITH_REFINER = 1
+  PKG_DIRS += $(REFINER)
+  TARGET += refiner
+  #ARCH = $(shell ruby -e 'puts RUBY_PLATFORM')
+  ARCH = x86_64-linux
+else
+  WITH_REFINER = 0
+endif
+
+TARGET += frontistr
 
 $(info TARGET is $(TARGET))
+
+
+##################
+### Make Rules ###
+##################
 
 all: $(PREFIX) $(TARGET)
 .PHONY: all
@@ -405,6 +454,9 @@ extract: $(PKG_DIRS)
 $(PREFIX):
 	if [ ! -d $(PREFIX) ]; then mkdir -p $(PREFIX); fi
 
+###
+### CMAKE
+###
 
 $(CMAKE).tar.gz:
 	wget https://cmake.org/files/v3.9/$(CMAKE).tar.gz
@@ -420,6 +472,10 @@ $(PREFIX)/$(CMAKE)/bin/cmake: $(CMAKE)
 cmake: $(PREFIX)/$(CMAKE)/bin/cmake
 .PHONY: cmake
 
+
+###
+### OpenMPI
+###
 
 $(OPENMPI).tar.bz2:
 	wget https://www.open-mpi.org/software/ompi/v3.0/downloads/$(OPENMPI).tar.bz2
@@ -439,6 +495,10 @@ $(PREFIX)/$(OPENMPI)/bin/mpicc: $(OPENMPI)
 openmpi: $(PREFIX)/$(OPENMPI)/bin/mpicc
 .PHONY: openmpi
 
+
+###
+### MPICH
+###
 
 $(MPICH).tar.gz:
 	wget http://www.mpich.org/static/downloads/3.2.1/$(MPICH).tar.gz
@@ -460,6 +520,10 @@ mpich: $(PREFIX)/$(MPICH)/bin/mpicc
 .PHONY: mpich
 
 
+###
+### OpenBLAS
+###
+
 $(OPENBLAS).tar.gz:
 	wget https://github.com/xianyi/OpenBLAS/archive/v0.2.20.tar.gz
 	mv v0.2.20.tar.gz $@
@@ -475,6 +539,10 @@ $(PREFIX)/$(OPENBLAS)/lib/libopenblas.a: $(OPENBLAS)
 openblas: $(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 .PHONY: openblas
 
+
+###
+### ATLAS
+###
 
 $(ATLAS).tar.bz2:
 	wget https://downloads.sourceforge.net/project/math-atlas/Stable/3.10.3/$(ATLAS).tar.bz2
@@ -502,6 +570,10 @@ $(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) lapack-3.8.0.tar.gz
 atlas: $(PREFIX)/$(ATLAS)/lib/libatlas.a
 .PHONY: atlas
 
+
+###
+### ScaLAPACK
+###
 
 $(SCALAPACK).tgz:
 	wget http://www.netlib.org/scalapack/$(SCALAPACK).tgz
@@ -539,6 +611,10 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 .PHONY: scalapack
 
 
+###
+### METIS
+###
+
 $(METIS).tar.gz:
 ifeq ($(metisversion), 4)
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$(METIS).tar.gz
@@ -562,6 +638,10 @@ endif
 metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 .PHONY: metis
 
+
+###
+### ParMETIS
+###
 
 $(PARMETIS).tar.gz:
 ifeq ($(metisversion), 4)
@@ -598,6 +678,10 @@ parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 .PHONY: parmetis
 
 
+###
+### SCOTCH
+###
+
 $(SCOTCH).tar.gz:
 	wget https://gforge.inria.fr/frs/download.php/file/34618/$(SCOTCH).tar.gz
 
@@ -625,6 +709,10 @@ $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 .PHONY: scotch
 
+
+###
+### MUMPS
+###
 
 $(MUMPS).tar.gz:
 	wget http://mumps.enseeiht.fr/$(MUMPS).tar.gz
@@ -670,6 +758,10 @@ endif
 mumps: $(PREFIX)/$(MUMPS)/lib/libdmumps.a
 .PHONY: mumps
 
+
+###
+### TRILINOS
+###
 
 $(TRILINOS)-Source.tar.bz2:
 	wget http://trilinos.csbsju.edu/download/files/$(TRILINOS)-Source.tar.bz2
@@ -754,6 +846,30 @@ trilinos: $(PREFIX)/$(TRILINOS)/lib/libml.a
 .PHONY: trilinos
 
 
+###
+### REVOCAP_Refiner
+###
+
+$(REFINER): $(REFINER).tar.gz
+	rm -rf $@
+	tar zxvf $(REFINER).tar.gz
+	touch $@
+
+$(PREFIX)/$(REFINER)/lib/libRcapRefiner.a: $(REFINER)
+	(cd $(REFINER); \
+	ARCH=$(ARCH) CC=$(MPICC) CFLAGS="$(CFLAGS)" CXX=$(MPICXX) CXXFLAGS="$(CXXFLAGS)" F90=$(MPIF90) FFLAGS="$(FCFLAGS)" make Refiner; \
+	mkdir -p $(PREFIX)/$(REFINER)/include $(PREFIX)/$(REFINER)/lib; \
+	cp Refiner/rcapRefiner.h $(PREFIX)/$(REFINER)/include; \
+	cp lib/$(ARCH)/libRcapRefiner.a $(PREFIX)/$(REFINER)/lib)
+
+refiner: $(PREFIX)/$(REFINER)/lib/libRcapRefiner.a
+.PHONY: refiner
+
+
+###
+### FrontISTR
+###
+
 $(FISTR):
 	if [ ! -d $(FISTR) ]; then \
 		git clone https://github.com/FrontISTR/FrontISTR.git $(FISTR); \
@@ -763,6 +879,13 @@ SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscot
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
 ifeq ($(fistrbuild), old)
+### Old style build with setup.sh
+FISTR_SETUP_OPTS = -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack
+
+ifeq ($(WITH_REFINER), 1)
+FISTR_SETUP_OPTS += --with-refiner
+endif
+
 $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -790,7 +913,7 @@ ifeq ($(metisversion), 4)
 	$(FISTR)/Makefile.conf
 endif
 	(cd $(FISTR) && \
-	./setup.sh -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack && \
+	./setup.sh $(FISTR_SETUP_OPTS) && \
 	(cd hecmw1 && make) && (cd fistr1 && make) && \
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
@@ -799,7 +922,11 @@ endif
 	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
 	@echo "Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable)."
 	@echo
+### End of old style build with setup.sh
+
 else
+
+### New style build with CMake
 FISTR_CMAKE_OPTS = \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	-D CMAKE_C_COMPILER=$(MPICC) \
@@ -811,7 +938,7 @@ FISTR_CMAKE_OPTS = \
 	-D WITH_TOOLS=1 \
 	-D WITH_MPI=1 \
 	-D WITH_OPENMP=1 \
-	-D WITH_REFINER=0 \
+	-D WITH_REFINER=$(WITH_REFINER) \
 	-D WITH_REVOCAP=0 \
 	-D WITH_METIS=1 \
 	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
@@ -827,6 +954,12 @@ FISTR_CMAKE_OPTS = \
 	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
 	-D WITH_DOC=0 \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(FISTR)
+
+ifeq ($(WITH_REFINER), 1)
+FISTR_CMAKE_OPTS += \
+	-D REFINER_INCLUDE_PATH=$(PREFIX)/$(REFINER)/include \
+	-D REFINER_LIBRARIES=$(PREFIX)/$(REFINER)/lib/libRcapRefiner.a
+endif
 
 ifeq ($(BLASLAPACK), OpenBLAS)
 FISTR_CMAKE_OPTS += \
@@ -872,11 +1005,16 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	@echo "Commands (fistr1, hecmw_part1, etc.) are located in $(PREFIX)/$(FISTR)/bin."
 	@echo "Please add $(PREFIX)/$(FISTR)/bin to your PATH environment variable (or copy files in $(PREFIX)/$(FISTR)/bin to one of the directories in your PATH environment variable)."
 	@echo
+### End of new style build with CMake
 endif
 
 frontistr: $(PREFIX)/$(FISTR)/bin/fistr1
 .PHONY: frontistr
 
+
+###
+### Misc.
+###
 
 env2-code:
 	if [ ! -d $@ ]; then \
@@ -940,6 +1078,9 @@ endif
 	if [ -d $(TRILINOS)-Source ]; then \
 		rm -rf $(TRILINOS)-Source/build; \
 	fi
+	if [ -d $(REFINER) ]; then \
+		(cd $(REFINER) && make clean); \
+	fi
 	if [ -d $(FISTR) ]; then \
 		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
 		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make clean); fi; \
@@ -947,11 +1088,10 @@ endif
 .PHONY: clean
 
 distclean:
-	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
+	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source $(REFINER)
 	rm -rf $(PREFIX)
 	if [ -d $(FISTR) ]; then \
 		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
 		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make distclean); fi; \
-		rm -f $(PREFIX)/.fistr; \
 	fi
 .PHONY: distclean
