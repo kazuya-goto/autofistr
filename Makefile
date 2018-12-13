@@ -107,7 +107,7 @@ export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 
 CMAKE_VER_MAJOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
 CMAKE_VER_MINOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
-CMAKE_VER_PATCH = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; print;}')
+CMAKE_VER_PATCH = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; s/[^\d].*//; print;}')
 
 DOWNLOAD_CMAKE = true
 ifneq ($(CMAKE_VER_MAJOR), "")
