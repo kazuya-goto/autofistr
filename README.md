@@ -72,8 +72,12 @@ The archive has to be found at the same level with Makefile.
 
 
 ## Running make
-Just type `make' and wait.
+On normal systems (desktop, laptop, workstations, etc.), you can just type `make' and wait.
 Everything will be done automatically.
+
+On supercomputers having different architecture for front-end node and compute nodes,
+you will have to first run 'make download' on front-end node.
+Then, start an interactive job and run 'make' on compute node, or create a job script to just run make and submit the job.
 
 
 ## Setting PATH
