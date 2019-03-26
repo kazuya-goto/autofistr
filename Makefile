@@ -603,7 +603,8 @@ endif
 
 $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a: $(SCALAPACK) $(MPI_INST)
 	(cd $(SCALAPACK); mkdir build; cd build; \
-	cmake $(SCALAPACK_CMAKE_OPTS) ..; \
+	echo "cmake $(SCALAPACK_CMAKE_OPTS) .." > run_cmake.sh; \
+	sh run_cmake.sh; \
 	make -j $(NJOBS); \
 	make install)
 
@@ -775,9 +776,9 @@ TRILINOS_CMAKE_OPTS = \
 	-D Trilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	-D CMAKE_C_COMPILER=$(MPICC) \
-	-D CMAKE_C_FLAGS="$(CFLAGS)" \
+	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_CXX_COMPILER=$(MPICXX) \
-	-D CMAKE_CXX_FLAGS="$(CFLAGS)" \
+	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
 	-D TPL_ENABLE_MPI=ON \
 	-D MPI_EXEC=$(MPIEXEC) \
 	-D Trilinos_ENABLE_CXX11=OFF \
@@ -807,30 +808,30 @@ ifeq ($(BLASLAPACK), OpenBLAS)
 TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/include \
 	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
-	-D BLAS_LIBRARY_NAMES:STRING="openblas" \
+	-D BLAS_LIBRARY_NAMES:STRING=\"openblas\" \
 	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
-	-D LAPACK_LIBRARY_NAMES:STRING="openblas"
+	-D LAPACK_LIBRARY_NAMES:STRING=\"openblas\"
 else
   ifeq ($(BLASLAPACK), ATLAS)
 TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(ATLAS)/include \
 	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
-	-D BLAS_LIBRARY_NAMES:STRING="f77blas;cblas;atlas" \
+	-D BLAS_LIBRARY_NAMES:STRING=\"f77blas;cblas;atlas\" \
 	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
-	-D LAPACK_LIBRARY_NAMES:STRING="lapack;f77blas;cblas;atlas"
+	-D LAPACK_LIBRARY_NAMES:STRING=\"lapack;f77blas;cblas;atlas\"
   else
     ifeq ($(BLASLAPACK), MKL)
 TRILINOS_CMAKE_OPTS += \
 	-D BLAS_INCLUDE_DIRS:PATH=$(MKLROOT)/include \
-	-D BLAS_LIBRARY_DIRS:PATH="$(MKLROOT)/lib/intel64" \
-	-D BLAS_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_sequential;mkl_core" \
-	-D LAPACK_LIBRARY_DIRS:PATH="$(MKLROOT)/lib/intel64" \
-	-D LAPACK_LIBRARY_NAMES:STRING="mkl_intel_lp64;mkl_sequential;mkl_core"
+	-D BLAS_LIBRARY_DIRS:PATH=\"$(MKLROOT)/lib/intel64\" \
+	-D BLAS_LIBRARY_NAMES:STRING=\"mkl_intel_lp64;mkl_sequential;mkl_core\" \
+	-D LAPACK_LIBRARY_DIRS:PATH=\"$(MKLROOT)/lib/intel64\" \
+	-D LAPACK_LIBRARY_NAMES:STRING=\"mkl_intel_lp64;mkl_sequential;mkl_core\"
     else
       ifeq ($(BLASLAPACK), FUJITSU)
 TRILINOS_CMAKE_OPTS += \
-	-D TPL_BLAS_LIBRARIES:STRING="-SSL2" \
-	-D TPL_LAPACK_LIBRARIES:STRING="-SSL2"
+	-D TPL_BLAS_LIBRARIES:STRING=\"-SSL2\" \
+	-D TPL_LAPACK_LIBRARIES:STRING=\"-SSL2\"
       endif
     endif
   endif
@@ -838,7 +839,8 @@ endif
 
 $(PREFIX)/$(TRILINOS)/lib/libml.a: $(TRILINOS)-Source metis parmetis scotch mumps
 	(cd $(TRILINOS)-Source; mkdir build; cd build; \
-	cmake $(TRILINOS_CMAKE_OPTS) ..; \
+	echo "cmake $(TRILINOS_CMAKE_OPTS) .." > run_cmake.sh; \
+	sh run_cmake.sh; \
 	make -j $(NJOBS); \
 	make install)
 
@@ -930,11 +932,11 @@ else
 FISTR_CMAKE_OPTS = \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	-D CMAKE_C_COMPILER=$(MPICC) \
-	-D CMAKE_C_FLAGS="$(CFLAGS)" \
+	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_CXX_COMPILER=$(MPICXX) \
-	-D CMAKE_CXX_FLAGS="$(CFLAGS)" \
+	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_Fortran_COMPILER=$(MPIF90) \
-	-D CMAKE_Fortran_FLAGS="$(FCFLAGS) $(OMPFLAGS)" \
+	-D CMAKE_Fortran_FLAGS=\"$(FCFLAGS) $(OMPFLAGS)\" \
 	-D WITH_TOOLS=1 \
 	-D WITH_MPI=1 \
 	-D WITH_OPENMP=1 \
@@ -949,7 +951,7 @@ FISTR_CMAKE_OPTS = \
 	-D WITH_LAPACK=1 \
 	-D WITH_MUMPS=1 \
 	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
-	-D MUMPS_LIBRARIES="$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a" \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\" \
 	-D WITH_ML=1 \
 	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
 	-D WITH_DOC=0 \
@@ -968,13 +970,13 @@ FISTR_CMAKE_OPTS += \
 else
   ifeq ($(BLASLAPACK), ATLAS)
 FISTR_CMAKE_OPTS += \
-	-D BLAS_LIBRARIES="$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a" \
-	-D LAPACK_LIBRARIES="$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a"
+	-D BLAS_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
+	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\"
   else
     ifeq ($(BLASLAPACK), MKL)
 FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=1 \
-	-D BLA_VENDOR="Intel10_64lp"
+	-D BLA_VENDOR=\"Intel10_64lp\"
     else
       ifeq ($(BLASLAPACK), FUJITSU)
 FISTR_CMAKE_OPTS += \
@@ -997,7 +999,8 @@ endif
 
 $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
 	(cd $(FISTR); mkdir build; cd build; cmake --version; \
-	cmake $(FISTR_CMAKE_OPTS) ..; \
+	echo "cmake $(FISTR_CMAKE_OPTS) .." > run_cmake.sh; \
+	sh run_cmake.sh; \
 	make -j $(NJOBS); \
 	make install)
 	@echo
