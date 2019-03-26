@@ -198,6 +198,10 @@ ifeq ($(COMPILER), INTEL)
       endif
     endif
   endif
+  MPICC = mpicc
+  MPICXX = mpicxx
+  MPIF90 = mpif90
+  MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     MPICC = mpiicc
     MPICXX = mpiicpc
@@ -208,28 +212,32 @@ ifeq ($(COMPILER), INTEL)
     endif
   else
     ifeq ($(MPI), OpenMPI)
-      MPI_INST = openmpi
-      MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
-      MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-      MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
-      MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
-      PACKAGES += $(OPENMPI).tar.bz2
-      PKG_DIRS += $(OPENMPI)
-      TARGET += openmpi
+      ifeq ($(DOWNLOAD_MPI), true)
+        MPI_INST = openmpi
+        MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
+        MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
+        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
+        MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
+        PACKAGES += $(OPENMPI).tar.bz2
+        PKG_DIRS += $(OPENMPI)
+        TARGET += openmpi
+      endif
       ifeq ($(BLASLAPACK), MKL)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
       endif
-      LIBSTDCXX = -lmpi_cxx
+      #LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
-        MPI_INST = mpich
-        MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
-        MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
-        MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
-        PACKAGES += $(MPICH).tar.gz
-        PKG_DIRS += $(MPICH)
-        TARGET += mpich
+        ifeq ($(DOWNLOAD_MPI), true)
+          MPI_INST = mpich
+          MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
+          MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
+          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
+          MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
+          PACKAGES += $(MPICH).tar.gz
+          PKG_DIRS += $(MPICH)
+          TARGET += mpich
+        endif
         ifeq ($(BLASLAPACK), MKL)
           SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
         endif
@@ -327,7 +335,7 @@ ifeq ($(COMPILER), GCC)
         LAPACKLIB = $(BLASLIB)
         SCALAPACKLIB = $(BLASLIB)
       endif
-      LIBSTDCXX = -lmpi_cxx
+      #LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
