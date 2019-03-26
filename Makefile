@@ -151,9 +151,9 @@ ifeq ($(COMPILER), INTEL)
   CXX = icpc
   FC = ifort
   ifeq ($(BUILD_TYPE), RELEASE)
-    CFLAGS = -O3 -xHost
-    CXXFLAGS = -O3 -xHost
-    FCFLAGS = -O3 -xHost
+    CFLAGS = -O3
+    CXXFLAGS = -O3
+    FCFLAGS = -O3
   else
     CFLAGS = -O0 -g -traceback
     CXXFLAGS = -O0 -g -traceback
