@@ -18,12 +18,12 @@ BLASLAPACK = MKL
 #BLASLIB = -lblas
 # LAPACKLIB (optional): system LAPACK lib (default: -llapack)
 #LAPACKLIB = -llapack
-# SCALAPACKLIB (optional): system LAPACK lib (default: -llapack)
+# SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
 #SCALAPACKLIB = -lscalapack
 
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
 
 # misc. options
-#fistrbuild = old
-#metisversion = 4
+#fistrbuild = old   # Old style build with setup.sh instead of cmake
+#metisversion = 4   # Use metis4/parmetis3 instead of metis5/parmetis4
