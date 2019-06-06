@@ -91,4 +91,4 @@ when running FrontISTR.
 
 
 ## License
-This project is licensed under the MPI License.
+This project is licensed under the MIT License.
