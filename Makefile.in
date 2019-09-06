@@ -25,5 +25,7 @@ BLASLAPACK = MKL
 NJOBS = 4
 
 # misc. options
-#fistrbuild = old   # Old style build with setup.sh instead of cmake
-#metisversion = 4   # Use metis4/parmetis3 instead of metis5/parmetis4
+# Old style build with setup.sh instead of cmake
+#fistrbuild = old
+# Use metis4/parmetis3 instead of metis5/parmetis4
+#metisversion = 4
