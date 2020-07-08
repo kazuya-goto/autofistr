@@ -26,12 +26,14 @@ $(info BLASLAPACK is $(BLASLAPACK))
 ### Package versions
 ###
 
-CMAKE     = cmake-3.9.6
-OPENMPI   = openmpi-3.0.1
-MPICH     = mpich-3.2.1
-OPENBLAS  = OpenBLAS-0.2.20
+CMAKE     = cmake-3.17.3
+OPENMPI   = openmpi-4.0.4
+MPICH     = mpich-3.3.2
+OPENBLAS  = OpenBLAS-0.3.10
 ATLAS     = atlas3.10.3
-SCALAPACK = scalapack-2.0.2
+#LAPACK    = lapack-3.9.0
+LAPACK    = lapack-3.8.0
+SCALAPACK = scalapack-2.1.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
   PARMETIS  = ParMetis-3.2.0
@@ -39,12 +41,12 @@ else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
 endif
-SCOTCH    = scotch_6.0.4
-MUMPS     = MUMPS_5.1.2
+SCOTCH    = scotch_6.0.9
+MUMPS     = MUMPS_5.3.3
 ifeq ($(COMPILER), FUJITSU)
-  TRILINOS  = trilinos-12.6.4
+  TRILINOS  = trilinos-release-12-6-4
 else
-  TRILINOS  = trilinos-12.12.1
+  TRILINOS  = trilinos-release-12-18-1
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
@@ -98,37 +100,43 @@ endif
 ### detect SYSTEM CMAKE
 ###
 
-CMAKE_MINVER_MAJOR = 2
-CMAKE_MINVER_MINOR = 8
-CMAKE_MINVER_PATCH = 11
-CMAKE_MINVER=$(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR).$(CMAKE_MINVER_PATCH)
-
+DOWNLOAD_CMAKE = true
 export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 
-CMAKE_VER_MAJOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
-CMAKE_VER_MINOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
-CMAKE_VER_PATCH = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; s/[^\d].*//; print;}')
+ifeq ("$(shell PATH=$(PATH) which cmake)", "")
+  $(info CMAKE not found)
+else
+  CMAKE_MINVER_MAJOR = 2
+  CMAKE_MINVER_MINOR = 8
+  CMAKE_MINVER_PATCH = 11
+  CMAKE_MINVER=$(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR).$(CMAKE_MINVER_PATCH)
 
-DOWNLOAD_CMAKE = true
-ifneq ($(CMAKE_VER_MAJOR), "")
-  $(info cmake-$(CMAKE_VER_MAJOR).$(CMAKE_VER_MINOR).$(CMAKE_VER_PATCH) detected)
-  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -eq $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
-    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -eq $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
-      ifeq ("$(shell [ $(CMAKE_VER_PATCH) -ge $(CMAKE_MINVER_PATCH) ] && echo true)", "true")
+  CMAKE_VER_MAJOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
+  CMAKE_VER_MINOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.//; s/\.\d+.*//;print;}')
+  CMAKE_VER_PATCH = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version \d+\.\d+\.//; s/[^\d].*//; print;}')
+
+  ifneq ($(CMAKE_VER_MAJOR), "")
+    $(info cmake-$(CMAKE_VER_MAJOR).$(CMAKE_VER_MINOR).$(CMAKE_VER_PATCH) detected)
+    ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -eq $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
+      ifeq ("$(shell [ $(CMAKE_VER_MINOR) -eq $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
+        ifeq ("$(shell [ $(CMAKE_VER_PATCH) -ge $(CMAKE_MINVER_PATCH) ] && echo true)", "true")
+          DOWNLOAD_CMAKE = false
+        endif
+      endif
+      ifeq ("$(shell [ $(CMAKE_VER_MINOR) -gt $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
         DOWNLOAD_CMAKE = false
       endif
     endif
-    ifeq ("$(shell [ $(CMAKE_VER_MINOR) -gt $(CMAKE_MINVER_MINOR) ] && echo true)", "true")
+    ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -gt $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
       DOWNLOAD_CMAKE = false
     endif
   endif
-  ifeq ("$(shell [ $(CMAKE_VER_MAJOR) -gt $(CMAKE_MINVER_MAJOR) ] && echo true)", "true")
-    DOWNLOAD_CMAKE = false
+  ifeq ($(DOWNLOAD_CMAKE), true)
+    $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER))
   endif
 endif
 $(info DOWNLOAD_CMAKE is $(DOWNLOAD_CMAKE))
 ifeq ($(DOWNLOAD_CMAKE), true)
-  $(info SYSTEM CMAKE is older than minimum required version $(CMAKE_MINVER))
   PACKAGES = $(CMAKE).tar.gz
   PKG_DIRS = $(CMAKE)
   TARGET = cmake
@@ -181,7 +189,7 @@ ifeq ($(COMPILER), INTEL)
       SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
     else
       ifeq ($(BLASLAPACK), ATLAS)
-        PACKAGES += $(ATLAS).tar.bz2 $(SCALAPACK).tgz
+        PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
         PKG_DIRS += $(ATLAS) $(SCALAPACK)
         TARGET += atlas scalapack
         BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
@@ -200,7 +208,7 @@ ifeq ($(COMPILER), INTEL)
   endif
   MPICC = mpicc
   MPICXX = mpicxx
-  MPIF90 = mpif90
+  MPIF90 = mpifort
   MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     MPICC = mpiicc
@@ -216,7 +224,7 @@ ifeq ($(COMPILER), INTEL)
         MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
+        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpifort
         MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
@@ -225,14 +233,14 @@ ifeq ($(COMPILER), INTEL)
       ifeq ($(BLASLAPACK), MKL)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
       endif
-      #LIBSTDCXX = -lmpi_cxx
+      LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
           MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
+          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpifort
           MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
@@ -279,7 +287,7 @@ ifeq ($(COMPILER), GCC)
       SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
     else
       ifeq ($(BLASLAPACK), ATLAS)
-        PACKAGES += $(ATLAS).tar.bz2 $(SCALAPACK).tgz
+        PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
         PKG_DIRS += $(ATLAS) $(SCALAPACK)
         TARGET += atlas scalapack
         BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
@@ -298,7 +306,7 @@ ifeq ($(COMPILER), GCC)
   endif
   MPICC = mpicc
   MPICXX = mpicxx
-  MPIF90 = mpif90
+  MPIF90 = mpifort
   MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     ifeq ($(BLASLAPACK), MKL)
@@ -318,7 +326,7 @@ ifeq ($(COMPILER), GCC)
         MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
+        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpifort
         MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
@@ -335,14 +343,14 @@ ifeq ($(COMPILER), GCC)
         LAPACKLIB = $(BLASLIB)
         SCALAPACKLIB = $(BLASLIB)
       endif
-      #LIBSTDCXX = -lmpi_cxx
+      LIBSTDCXX = -lmpi_cxx
     else
       ifeq ($(MPI), MPICH)
         ifeq ($(DOWNLOAD_MPI), true)
           MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
+          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpifort
           MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
@@ -426,8 +434,8 @@ ifneq ($(metisversion), 4)
   PKG_DIRS += $(METIS)
   TARGET += metis
 endif
-PACKAGES += $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS)-Source.tar.bz2
-PKG_DIRS += $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source
+PACKAGES += $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS).tar.gz
+PKG_DIRS += $(PARMETIS) $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS)
 TARGET += parmetis scotch mumps trilinos
 
 ifeq ("$(shell [ -f $(REFINER).tar.gz ] && echo true)", "true")
@@ -452,7 +460,7 @@ $(info TARGET is $(TARGET))
 all: $(PREFIX) $(TARGET)
 .PHONY: all
 
-download: $(PACKAGES)
+download: $(PACKAGES) $(FISTR)
 .PHONY: download
 
 extract: $(PKG_DIRS)
@@ -466,16 +474,18 @@ $(PREFIX):
 ### CMAKE
 ###
 
+CMAKE_VER = $(shell echo $(CMAKE) | perl -pe 's/cmake-//;')
+
 $(CMAKE).tar.gz:
-	wget https://cmake.org/files/v3.9/$(CMAKE).tar.gz
+	wget https://github.com/Kitware/CMake/releases/download/v$(CMAKE_VER)/$@
 
 $(CMAKE): $(CMAKE).tar.gz
 	rm -rf $@
-	tar zxvf $(CMAKE).tar.gz
+	tar zxvf $<
 	touch $@
 
 $(PREFIX)/$(CMAKE)/bin/cmake: $(CMAKE)
-	(cd $(CMAKE) && ./bootstrap --parallel=$(NJOBS) --prefix=$(PREFIX)/$(CMAKE) && make -j $(NJOBS) && make install)
+	(cd $(CMAKE) && ./bootstrap --parallel=$(NJOBS) --prefix=$(PREFIX)/$(CMAKE) -- -DCMAKE_USE_OPENSSL=OFF && make -j $(NJOBS) && make install)
 
 cmake: $(PREFIX)/$(CMAKE)/bin/cmake
 .PHONY: cmake
@@ -485,12 +495,15 @@ cmake: $(PREFIX)/$(CMAKE)/bin/cmake
 ### OpenMPI
 ###
 
+OPENMPI_VER = $(shell echo $(OPENMPI) | perl -pe 's/openmpi-//;')
+OPENMPI_VER_MM = $(shell echo $(OPENMPI_VER) | perl -pe 's/\.\d+[^\.]//;')
+
 $(OPENMPI).tar.bz2:
-	wget https://www.open-mpi.org/software/ompi/v3.0/downloads/$(OPENMPI).tar.bz2
+	wget https://download.open-mpi.org/release/open-mpi/v$(OPENMPI_VER_MM)/$@
 
 $(OPENMPI): $(OPENMPI).tar.bz2
 	rm -rf $@
-	tar jxvf $(OPENMPI).tar.bz2
+	tar jxvf $<
 	touch $@
 
 $(PREFIX)/$(OPENMPI)/bin/mpicc: $(OPENMPI)
@@ -508,12 +521,14 @@ openmpi: $(PREFIX)/$(OPENMPI)/bin/mpicc
 ### MPICH
 ###
 
+MPICH_VER = $(shell echo $(MPICH) | perl -pe 's/mpich-//;')
+
 $(MPICH).tar.gz:
-	wget http://www.mpich.org/static/downloads/3.2.1/$(MPICH).tar.gz
+	wget http://www.mpich.org/static/downloads/$(MPICH_VER)/$@
 
 $(MPICH): $(MPICH).tar.gz
 	rm -rf $@
-	tar zxvf $(MPICH).tar.gz
+	tar zxvf $<
 	touch $@
 
 $(PREFIX)/$(MPICH)/bin/mpicc: $(MPICH)
@@ -532,9 +547,11 @@ mpich: $(PREFIX)/$(MPICH)/bin/mpicc
 ### OpenBLAS
 ###
 
+OPENBLAS_VER = $(shell echo $(OPENBLAS) | perl -pe 's/OpenBLAS-//;')
+
 $(OPENBLAS).tar.gz:
-	wget https://github.com/xianyi/OpenBLAS/archive/v0.2.20.tar.gz
-	mv v0.2.20.tar.gz $@
+	wget https://github.com/xianyi/OpenBLAS/archive/v$(OPENBLAS_VER).tar.gz
+	mv v$(OPENBLAS_VER).tar.gz $@
 
 $(OPENBLAS): $(OPENBLAS).tar.gz
 	rm -rf $@
@@ -552,21 +569,30 @@ openblas: $(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 ### ATLAS
 ###
 
-$(ATLAS).tar.bz2:
-	wget https://downloads.sourceforge.net/project/math-atlas/Stable/3.10.3/$(ATLAS).tar.bz2
+ATLAS_VER = $(shell echo $(ATLAS) | perl -pe 's/atlas//;')
+LAPACK_VER = $(shell echo $(LAPACK) | perl -pe 's/lapack-//;')
 
-lapack-3.8.0.tar.gz:
-	wget http://www.netlib.org/lapack/lapack-3.8.0.tar.gz
+$(ATLAS).tar.bz2:
+	wget https://downloads.sourceforge.net/project/math-atlas/Stable/$(ATLAS_VER)/$@
+
+# from 3.9.0
+#$(LAPACK).tar.gz:
+#	wget https://github.com/Reference-LAPACK/lapack/archive/v$(LAPACK_VER).tar.gz
+#	mv v$(LAPACK_VER).tar.gz $@
+
+# till 3.8.0
+$(LAPACK).tar.gz:
+	wget http://www.netlib.org/lapack/$@
 
 $(ATLAS): $(ATLAS).tar.bz2
 	rm -rf $@
-	tar jxvf $(ATLAS).tar.bz2
+	tar jxvf $<
 	mv ATLAS $@
 	touch $@
 
-$(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) lapack-3.8.0.tar.gz
+$(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) $(LAPACK).tar.gz
 	(cd $(ATLAS); mkdir build; cd build; \
-	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/lapack-3.8.0.tar.gz \
+	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/$(LAPACK).tar.gz \
 	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS); \
 	make build; make install)
 
@@ -626,14 +652,14 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 
 $(METIS).tar.gz:
 ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$(METIS).tar.gz
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$@
 else
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$(METIS).tar.gz
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$@
 endif
 
 $(METIS): $(METIS).tar.gz
 	rm -rf $@
-	tar zxvf $(METIS).tar.gz
+	tar zxvf $<
 	touch $@
 
 ifeq ($(metisversion), 4)
@@ -654,14 +680,14 @@ metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 
 $(PARMETIS).tar.gz:
 ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$(PARMETIS).tar.gz
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$@
 else
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$(PARMETIS).tar.gz
+	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$@
 endif
 
 $(PARMETIS): $(PARMETIS).tar.gz
 	rm -rf $@
-	tar zxvf $(PARMETIS).tar.gz
+	tar zxvf $<
 	touch $@
 
 $(PREFIX)/$(PARMETIS)/lib/libparmetis.a: $(PARMETIS) $(MPI_INST)
@@ -692,11 +718,11 @@ parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 ###
 
 $(SCOTCH).tar.gz:
-	wget https://gforge.inria.fr/frs/download.php/file/34618/$(SCOTCH).tar.gz
+	wget https://gforge.inria.fr/frs/download.php/latestfile/298/$@
 
 $(SCOTCH): $(SCOTCH).tar.gz
 	rm -rf $@
-	tar zxvf $(SCOTCH).tar.gz
+	tar zxvf $<
 	touch $@
 
 $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
@@ -724,11 +750,11 @@ scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 ###
 
 $(MUMPS).tar.gz:
-	wget http://mumps.enseeiht.fr/$(MUMPS).tar.gz
+	wget http://mumps.enseeiht.fr/$@
 
 $(MUMPS): $(MUMPS).tar.gz
 	rm -rf $@
-	tar zxvf $(MUMPS).tar.gz
+	tar zxvf $<
 	touch $@
 
 MUMPS_DEPS = $(MUMPS) metis parmetis scotch
@@ -744,7 +770,7 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%mpicc%!$(MPICC)!; \
-	s!%mpif90%!$(MPIF90)!; \
+	s!%mpifort%!$(MPIF90)!; \
 	s!%lapack_libs%!$(LAPACKLIB)!; \
 	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
 	s!%blas_libs%!$(BLASLIB)!; \
@@ -772,12 +798,12 @@ mumps: $(PREFIX)/$(MUMPS)/lib/libdmumps.a
 ### TRILINOS
 ###
 
-$(TRILINOS)-Source.tar.bz2:
-	wget http://trilinos.csbsju.edu/download/files/$(TRILINOS)-Source.tar.bz2
+$(TRILINOS).tar.gz:
+	wget https://github.com/trilinos/Trilinos/archive/$@
 
-$(TRILINOS)-Source: $(TRILINOS)-Source.tar.bz2
+Trilinos-$(TRILINOS): $(TRILINOS).tar.gz
 	rm -rf $@
-	tar jxvf $(TRILINOS)-Source.tar.bz2
+	tar zxvf $<
 	touch $@
 
 TRILINOS_CMAKE_OPTS = \
@@ -789,7 +815,6 @@ TRILINOS_CMAKE_OPTS = \
 	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
 	-D TPL_ENABLE_MPI=ON \
 	-D MPI_EXEC=$(MPIEXEC) \
-	-D Trilinos_ENABLE_CXX11=OFF \
 	-D Trilinos_ENABLE_Fortran:BOOL=OFF \
 	-D Trilinos_ENABLE_OpenMP:BOOL=ON \
 	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
@@ -814,6 +839,13 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_BLAS=ON \
 	-D TPL_ENABLE_LAPACK=ON \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
+
+ifeq ($(COMPILER), GCC)
+TRILINOS_CMAKE_OPTS += \
+	-D Trilinos_ENABLE_CXX11=ON
+else
+	-D Trilinos_ENABLE_CXX11=OFF
+endif
 
 ifeq ($(BLASLAPACK), OpenBLAS)
 TRILINOS_CMAKE_OPTS += \
@@ -848,8 +880,8 @@ TRILINOS_CMAKE_OPTS += \
   endif
 endif
 
-$(PREFIX)/$(TRILINOS)/lib/libml.a: $(TRILINOS)-Source metis parmetis scotch mumps
-	(cd $(TRILINOS)-Source; mkdir build; cd build; \
+$(PREFIX)/$(TRILINOS)/lib/libml.a: Trilinos-$(TRILINOS) metis parmetis scotch mumps
+	(cd Trilinos-$(TRILINOS); mkdir build; cd build; \
 	echo "cmake $(TRILINOS_CMAKE_OPTS) .." > run_cmake.sh; \
 	sh run_cmake.sh; \
 	make -j $(NJOBS); \
@@ -885,7 +917,7 @@ refiner: $(PREFIX)/$(REFINER)/lib/libRcapRefiner.a
 
 $(FISTR):
 	if [ ! -d $(FISTR) ]; then \
-		git clone https://github.com/FrontISTR/FrontISTR.git $(FISTR); \
+		git clone https://gitlab.com/FrontISTR-Commons/FrontISTR.git $(FISTR); \
 	fi
 
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
@@ -976,21 +1008,26 @@ endif
 
 ifeq ($(BLASLAPACK), OpenBLAS)
 FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF \
 	-D BLAS_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
-	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
+	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
+	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
 else
   ifeq ($(BLASLAPACK), ATLAS)
 FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF \
 	-D BLAS_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
-	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\"
+	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
+	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
   else
     ifeq ($(BLASLAPACK), MKL)
 FISTR_CMAKE_OPTS += \
-	-D WITH_MKL=1 \
+	-D WITH_MKL=ON \
 	-D BLA_VENDOR=\"Intel10_64lp\"
     else
       ifeq ($(BLASLAPACK), FUJITSU)
 FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF \
 	-D CMAKE_Fortran_MODDIR_FLAG=-M \
 	-D BLAS_LIBRARIES=-SSL2BLAMP \
 	-D LAPACK_LIBRARIES=-SSL2BLAMP \
@@ -1000,6 +1037,7 @@ FISTR_CMAKE_OPTS += \
 	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS)
       else
 FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF \
 	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
 	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
 	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
@@ -1089,8 +1127,8 @@ endif
 	if [ -d $(MUMPS) ]; then \
 		(cd $(MUMPS) && make clean); \
 	fi
-	if [ -d $(TRILINOS)-Source ]; then \
-		rm -rf $(TRILINOS)-Source/build; \
+	if [ -d Trilinos-$(TRILINOS) ]; then \
+		rm -rf Trilinos-$(TRILINOS)/build; \
 	fi
 	if [ -d $(REFINER) ]; then \
 		(cd $(REFINER) && make clean); \
@@ -1102,7 +1140,7 @@ endif
 .PHONY: clean
 
 distclean:
-	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) $(TRILINOS)-Source $(REFINER)
+	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS) $(REFINER)
 	rm -rf $(PREFIX)
 	if [ -d $(FISTR) ]; then \
 		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
