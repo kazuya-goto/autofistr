@@ -273,6 +273,10 @@ ifeq ($(COMPILER), GCC)
     CXXFLAGS = -O0 -g
     FCFLAGS = -O0 -g
   endif
+  GCC_VER = $(shell gcc -dumpversion)
+  ifeq ($(GCC_VER), 10)
+    FCFLAGS += -fallow-argument-mismatch
+  endif
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
   ifeq ($(BLASLAPACK), MKL)
@@ -840,11 +844,12 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_LAPACK=ON \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
 
-ifeq ($(COMPILER), GCC)
+ifeq ($(COMPILER), SOME_OLD_COMPILER)
+TRILINOS_CMAKE_OPTS += \
+	-D Trilinos_ENABLE_CXX11=OFF
+else
 TRILINOS_CMAKE_OPTS += \
 	-D Trilinos_ENABLE_CXX11=ON
-else
-	-D Trilinos_ENABLE_CXX11=OFF
 endif
 
 ifeq ($(BLASLAPACK), OpenBLAS)
