@@ -208,7 +208,7 @@ ifeq ($(COMPILER), INTEL)
   endif
   MPICC = mpicc
   MPICXX = mpicxx
-  MPIF90 = mpifort
+  MPIF90 = mpif90
   MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     MPICC = mpiicc
@@ -224,7 +224,7 @@ ifeq ($(COMPILER), INTEL)
         MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpifort
+        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
         MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
@@ -240,7 +240,7 @@ ifeq ($(COMPILER), INTEL)
           MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpifort
+          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
           MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
@@ -310,7 +310,7 @@ ifeq ($(COMPILER), GCC)
   endif
   MPICC = mpicc
   MPICXX = mpicxx
-  MPIF90 = mpifort
+  MPIF90 = mpif90
   MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     ifeq ($(BLASLAPACK), MKL)
@@ -330,7 +330,7 @@ ifeq ($(COMPILER), GCC)
         MPI_INST = openmpi
         MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
         MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpifort
+        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
         MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
         PACKAGES += $(OPENMPI).tar.bz2
         PKG_DIRS += $(OPENMPI)
@@ -354,7 +354,7 @@ ifeq ($(COMPILER), GCC)
           MPI_INST = mpich
           MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
           MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpifort
+          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
           MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
           PACKAGES += $(MPICH).tar.gz
           PKG_DIRS += $(MPICH)
@@ -626,17 +626,17 @@ SCALAPACK_CMAKE_OPTS = \
 	-D CMAKE_Fortran_COMPILER=$(FC) \
 	-D MPI_C_COMPILER=$(MPICC) \
 	-D MPI_Fortran_COMPILER=$(MPIF90) \
+	-D CMAKE_EXE_LINKER_FLAGS=$(OMPFLAGS) \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(SCALAPACK)
 
 ifeq ($(BLASLAPACK), OpenBLAS)
 SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
-	-D LAPACK_goto2_LIBRARY:FILEPATH=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
+	-D BLAS_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
+	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
 else
 SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_atlas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libatlas.a \
-	-D BLAS_f77blas_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/lib/libf77blas.a \
-	-D LAPACK_LA_ACK_LIBRARY:FILEPATH=$(PREFIX)/$(ATLAS)/liblapack_atlas.a
+	-D BLAS_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
+	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\"
 endif
 
 $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a: $(SCALAPACK) $(MPI_INST)
@@ -774,7 +774,7 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%mpicc%!$(MPICC)!; \
-	s!%mpifort%!$(MPIF90)!; \
+	s!%mpif90%!$(MPIF90)!; \
 	s!%lapack_libs%!$(LAPACKLIB)!; \
 	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
 	s!%blas_libs%!$(BLASLIB)!; \
