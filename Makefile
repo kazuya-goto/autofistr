@@ -31,8 +31,7 @@ OPENMPI   = openmpi-4.0.4
 MPICH     = mpich-3.3.2
 OPENBLAS  = OpenBLAS-0.3.10
 ATLAS     = atlas3.10.3
-#LAPACK    = lapack-3.9.0
-LAPACK    = lapack-3.8.0
+LAPACK    = lapack-3.9.0
 SCALAPACK = scalapack-2.1.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
@@ -580,13 +579,13 @@ $(ATLAS).tar.bz2:
 	wget https://downloads.sourceforge.net/project/math-atlas/Stable/$(ATLAS_VER)/$@
 
 # from 3.9.0
-#$(LAPACK).tar.gz:
-#	wget https://github.com/Reference-LAPACK/lapack/archive/v$(LAPACK_VER).tar.gz
-#	mv v$(LAPACK_VER).tar.gz $@
-
-# till 3.8.0
 $(LAPACK).tar.gz:
-	wget http://www.netlib.org/lapack/$@
+	wget https://github.com/Reference-LAPACK/lapack/archive/v$(LAPACK_VER).tar.gz
+	mv v$(LAPACK_VER).tar.gz $@
+
+## 3.8.0
+#$(LAPACK).tar.gz:
+#	wget http://www.netlib.org/lapack/$@
 
 $(ATLAS): $(ATLAS).tar.bz2
 	rm -rf $@
@@ -597,7 +596,7 @@ $(ATLAS): $(ATLAS).tar.bz2
 $(PREFIX)/$(ATLAS)/lib/libatlas.a: $(ATLAS) $(LAPACK).tar.gz
 	(cd $(ATLAS); mkdir build; cd build; \
 	../configure --with-netlib-lapack-tarfile=$(TOPDIR)/$(LAPACK).tar.gz \
-	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS); \
+	-Si omp 1 -F alg $(OMPFLAGS) --prefix=$(PREFIX)/$(ATLAS) $(ATLAS_CONFIG_FLAGS); \
 	make build; make install)
 
 # to force change compiler, add the following to configure option
