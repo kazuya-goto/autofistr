@@ -38,16 +38,16 @@ FUJITSU MPI can be used only with FUJITSU Compiler.
 If you specified to use OpenMPI or MPICH and it is not found in your PATH,
 source archive of the specified MPI will be downloaded and built automatically.
 
-### BLAS/LAPACK/SCALAPACK
-Any BLAS/LAPACK/SCALAPACK can be used; e.g. Intel MKL, OpenBLAS, ATLAS, FUJITSU SSL2.
+### BLAS/LAPACK/ScaLAPACK
+Any BLAS/LAPACK/ScaLAPACK can be used; e.g. Intel MKL, OpenBLAS, ATLAS, FUJITSU SSL2.
 
-If you want to use BLAS/LAPACK/SCALAPACK already installed on your system, set BLASLAPACK = SYSTEM
+If you want to use BLAS/LAPACK/ScaLAPACK already installed on your system, set BLASLAPACK = SYSTEM
 and make sure that BLASLIB/LAPACKLIB/SCALAPACKLIB are correctly set in Makefile.in.
 
 Intel MKL, OpenBLAS and ATLAS can be used with either Intel Compiler or GCC.
 FUJITSU SSL2 can be used only with FUJITSU Compiler.
 
-If you choose to use OpenBLAS or ATLAS, netlib scalapack will be downloaded and built automatically.
+If you choose to use OpenBLAS or ATLAS, netlib ScaLAPACK will be downloaded and built automatically.
 
 ### Number of Jobs
 cmake supports parallel build.
@@ -63,7 +63,7 @@ If metisversion = 4 is set, metis4/parmetis3 is used instead of metis5/parmetis4
 If you want to use specific version of FrontISTR, download and extract the source archive before running make.
 Souce tree has to be found with the name FrontISTR at the same level with Makefile.
 
-If you skip this process, the current master branch from Github will be downloaded automatically.
+If you skip this process, the current master branch will be downloaded from GitLab automatically.
 
 
 ## Download REVOCAP_Refiner (Optional)
@@ -88,6 +88,12 @@ so please follow the instruction.
 ## Running FrontISTR
 If MPICH or OpenMPI was downloaded and built, make sure that you use mpirun that is built by this tool
 when running FrontISTR.
+
+
+## To DO
+- Update support of REVOCAP_Refiner
+- Add support to use BLAS and LAPACK on the system while download and build netlib ScaLAPACK
+- Add support for PGI compiler
 
 
 ## License
