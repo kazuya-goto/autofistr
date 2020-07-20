@@ -144,14 +144,107 @@ else
 endif
 
 ###
-### Compiler, BLAS, LAPACK ScaLAPACK settings
+### BLAS, LAPACK, ScaLAPACK settings
 ###
 
 ifeq ($(BLASLAPACK), MKL)
   ifeq ("$(MKLROOT)", "")
     $(error MKLROOT not set; please make sure the environment variables are correctly set)
   endif
+  # BLAS
+  ifeq ($(COMPILER), INTEL)
+    BLASLIB = -Wl,--start-group \
+      ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
+      ${MKLROOT}/lib/intel64/libmkl_intel_thread.a \
+      ${MKLROOT}/lib/intel64/libmkl_core.a \
+      -Wl,--end-group -liomp5
+  endif
+  ifeq ($(COMPILER), GCC)
+    BLASLIB = -Wl,--start-group \
+      ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+      ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+      ${MKLROOT}/lib/intel64/libmkl_core.a \
+      -Wl,--end-group -lgomp -ldl
+  endif
+  # LAPACK
+  LAPACKLIB = $(BLASLIB)
+  # ScaLAPACK
+  ifeq ($(MPI), IMPI)
+    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+  else
+    ifeq ($(MPI), OpenMPI)
+      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+    else
+      ifeq ($(MPI), MPICH)
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+      else
+        $(error unsupported MPI: $(MPI))
+      endif
+    endif
+  endif
+else
+  ifeq ($(BLASLAPACK), OpenBLAS)
+    PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
+    PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
+    TARGET += openblas scalapack
+    BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
+    LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
+    SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  else
+    ifeq ($(BLASLAPACK), ATLAS)
+      PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
+      PKG_DIRS += $(ATLAS) $(SCALAPACK)
+      TARGET += atlas scalapack
+      BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
+      LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
+      SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+    else
+      ifeq ($(BLASLAPACK), SYSTEM)
+        BLASLIB ?= -lblas
+        LAPACKLIB ?= -llapack
+        SCALAPACKLIB ?= -lscalapack
+      else
+        $(error unsupported BLASLAPACK: $(BLASLAPACK))
+      endif
+    endif
+  endif
 endif
+
+###
+### MPI settings
+###
+
+ifeq ($(DOWNLOAD_MPI), true)
+  ifeq ($(MPI), OpenMPI)
+    MPI_INST = openmpi
+    PACKAGES += $(OPENMPI).tar.bz2
+    PKG_DIRS += $(OPENMPI)
+    TARGET += openmpi
+  endif
+  ifeq ($(MPI), MPICH)
+    MPI_INST = mpich
+    PACKAGES += $(MPICH).tar.gz
+    PKG_DIRS += $(MPICH)
+    TARGET += mpich
+  endif
+  MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
+  MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
+  MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
+  MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
+else
+  MPICC = mpicc
+  MPICXX = mpicxx
+  MPIF90 = mpif90
+  MPIEXEC = mpiexec
+endif
+
+ifeq ($(MPI), OpenMPI)
+  LIBSTDCXX = -lmpi_cxx
+endif
+
+###
+### Compiler settings
+###
 
 ifeq ($(COMPILER), INTEL)
   CC = icc
@@ -175,83 +268,11 @@ ifeq ($(COMPILER), INTEL)
   endif
   $(info OMPFLAGS is $(OMPFLAGS))
   NOFOR_MAIN = -nofor_main
-  ifeq ($(BLASLAPACK), MKL)
-    BLASLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
-    LAPACKLIB = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
-  else
-    ifeq ($(BLASLAPACK), OpenBLAS)
-      PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
-      PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
-      TARGET += openblas scalapack
-      BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
-      LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
-      SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
-    else
-      ifeq ($(BLASLAPACK), ATLAS)
-        PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
-        PKG_DIRS += $(ATLAS) $(SCALAPACK)
-        TARGET += atlas scalapack
-        BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
-        LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
-        SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
-      else
-        ifeq ($(BLASLAPACK), SYSTEM)
-          BLASLIB ?= -lblas
-          LAPACKLIB ?= -llapack
-          SCALAPACKLIB ?= -lscalapack
-        else
-          $(error unsupported BLASLAPACK: $(BLASLAPACK))
-        endif
-      endif
-    endif
-  endif
-  MPICC = mpicc
-  MPICXX = mpicxx
-  MPIF90 = mpif90
-  MPIEXEC = mpiexec
   ifeq ($(MPI), IMPI)
     MPICC = mpiicc
     MPICXX = mpiicpc
     MPIF90 = mpiifort
     MPIEXEC = mpiexec
-    ifeq ($(BLASLAPACK), MKL)
-      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-    endif
-  else
-    ifeq ($(MPI), OpenMPI)
-      ifeq ($(DOWNLOAD_MPI), true)
-        MPI_INST = openmpi
-        MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
-        MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
-        MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
-        PACKAGES += $(OPENMPI).tar.bz2
-        PKG_DIRS += $(OPENMPI)
-        TARGET += openmpi
-      endif
-      ifeq ($(BLASLAPACK), MKL)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-      endif
-      LIBSTDCXX = -lmpi_cxx
-    else
-      ifeq ($(MPI), MPICH)
-        ifeq ($(DOWNLOAD_MPI), true)
-          MPI_INST = mpich
-          MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
-          MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
-          MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
-          PACKAGES += $(MPICH).tar.gz
-          PKG_DIRS += $(MPICH)
-          TARGET += mpich
-        endif
-        ifeq ($(BLASLAPACK), MKL)
-          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-        endif
-      else
-        $(error unsupported MPI: $(MPI))
-      endif
-    endif
   endif
   LIBSTDCXX += -lstdc++
   CLINKER = $(MPICC)
@@ -278,103 +299,6 @@ ifeq ($(COMPILER), GCC)
   endif
   OMPFLAGS = -fopenmp
   NOFOR_MAIN =
-  ifeq ($(BLASLAPACK), MKL)
-    # BLASLIB, LAPACKLIB, SCALAPACKLIB will be set later
-  else
-    ifeq ($(BLASLAPACK), OpenBLAS)
-      PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
-      PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
-      TARGET += openblas scalapack
-      BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
-      LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
-      SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
-    else
-      ifeq ($(BLASLAPACK), ATLAS)
-        PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
-        PKG_DIRS += $(ATLAS) $(SCALAPACK)
-        TARGET += atlas scalapack
-        BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
-        LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
-        SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
-      else
-        ifeq ($(BLASLAPACK), SYSTEM)
-          BLASLIB ?= -lblas
-          LAPACKLIB ?= -llapack
-          SCALAPACKLIB ?= -lscalapack
-        else
-          $(error unsupported BLASLAPACK: $(BLASLAPACK))
-        endif
-      endif
-    endif
-  endif
-  MPICC = mpicc
-  MPICXX = mpicxx
-  MPIF90 = mpif90
-  MPIEXEC = mpiexec
-  ifeq ($(MPI), IMPI)
-    ifeq ($(BLASLAPACK), MKL)
-      BLASLIB = -Wl,--start-group \
-        ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-        ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a \
-        ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-        ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-        ${MKLROOT}/lib/intel64/libmkl_core.a \
-        -Wl,--end-group -lgomp -ldl
-      LAPACKLIB = $(BLASLIB)
-      SCALAPACKLIB = $(BLASLIB)
-    endif
-  else
-    ifeq ($(MPI), OpenMPI)
-      ifeq ($(DOWNLOAD_MPI), true)
-        MPI_INST = openmpi
-        MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
-        MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-        MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
-        MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
-        PACKAGES += $(OPENMPI).tar.bz2
-        PKG_DIRS += $(OPENMPI)
-        TARGET += openmpi
-      endif
-      ifeq ($(BLASLAPACK), MKL)
-        BLASLIB = -Wl,--start-group \
-          ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-          ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
-          ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-          ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-          ${MKLROOT}/lib/intel64/libmkl_core.a \
-          -Wl,--end-group -lgomp -ldl
-        LAPACKLIB = $(BLASLIB)
-        SCALAPACKLIB = $(BLASLIB)
-      endif
-      LIBSTDCXX = -lmpi_cxx
-    else
-      ifeq ($(MPI), MPICH)
-        ifeq ($(DOWNLOAD_MPI), true)
-          MPI_INST = mpich
-          MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
-          MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
-          MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
-          MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
-          PACKAGES += $(MPICH).tar.gz
-          PKG_DIRS += $(MPICH)
-          TARGET += mpich
-        endif
-        ifeq ($(BLASLAPACK), MKL)
-          BLASLIB = -Wl,--start-group \
-            ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
-            ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a \
-            ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-            ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-            ${MKLROOT}/lib/intel64/libmkl_core.a \
-            -Wl,--end-group -lgomp -ldl
-          LAPACKLIB = $(BLASLIB)
-          SCALAPACKLIB = $(BLASLIB)
-        endif
-      else
-        $(error unsupported MPI: $(MPI))
-      endif
-    endif
-  endif
   LIBSTDCXX += -lstdc++
   CLINKER = $(MPICC)
   F90LINKER = $(MPIF90)
@@ -626,17 +550,9 @@ SCALAPACK_CMAKE_OPTS = \
 	-D MPI_C_COMPILER=$(MPICC) \
 	-D MPI_Fortran_COMPILER=$(MPIF90) \
 	-D CMAKE_EXE_LINKER_FLAGS=$(OMPFLAGS) \
+	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
+	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(SCALAPACK)
-
-ifeq ($(BLASLAPACK), OpenBLAS)
-SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
-	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a
-else
-SCALAPACK_CMAKE_OPTS += \
-	-D BLAS_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
-	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\"
-endif
 
 $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a: $(SCALAPACK) $(MPI_INST)
 	(cd $(SCALAPACK); mkdir build; cd build; \
@@ -927,8 +843,11 @@ $(FISTR):
 SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
 F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
 
+
 ifeq ($(fistrbuild), old)
-### Old style build with setup.sh
+#
+# Old style build with setup.sh
+#
 FISTR_SETUP_OPTS = -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack
 
 ifeq ($(WITH_REFINER), 1)
@@ -974,8 +893,9 @@ endif
 ### End of old style build with setup.sh
 
 else
-
-### New style build with CMake
+#
+# New style build with CMake
+#
 FISTR_CMAKE_OPTS = \
 	-D CMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	-D CMAKE_C_COMPILER=$(MPICC) \
@@ -1002,6 +922,12 @@ FISTR_CMAKE_OPTS = \
 	-D WITH_ML=1 \
 	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
 	-D WITH_DOC=0 \
+	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
+	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
+	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\" \
+	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
+	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
+	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS) \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(FISTR)
 
 ifeq ($(WITH_REFINER), 1)
@@ -1010,49 +936,20 @@ FISTR_CMAKE_OPTS += \
 	-D REFINER_LIBRARIES=$(PREFIX)/$(REFINER)/lib/libRcapRefiner.a
 endif
 
-ifeq ($(BLASLAPACK), OpenBLAS)
-FISTR_CMAKE_OPTS += \
-	-D WITH_MKL=OFF \
-	-D BLAS_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
-	-D LAPACK_LIBRARIES=$(PREFIX)/$(OPENBLAS)/lib/libopenblas.a \
-	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
-else
-  ifeq ($(BLASLAPACK), ATLAS)
-FISTR_CMAKE_OPTS += \
-	-D WITH_MKL=OFF \
-	-D BLAS_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
-	-D LAPACK_LIBRARIES=\"$(PREFIX)/$(ATLAS)/lib/libptlapack.a;$(PREFIX)/$(ATLAS)/lib/libptf77blas.a;$(PREFIX)/$(ATLAS)/lib/libptcblas.a;$(PREFIX)/$(ATLAS)/lib/libatlas.a\" \
-	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
-  else
-    ifeq ($(BLASLAPACK), MKL)
+ifeq ($(BLASLAPACK), MKL)
 FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=ON \
 	-D BLA_VENDOR=\"Intel10_64lp\" \
-	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
-	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
-	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\" \
 	-D MKL_INCLUDE_PATH=$(MKLROOT)/include \
-	-D MKL_LIBRARIES=\"$(SCALAPACKLIB)\"
-    else
-      ifeq ($(BLASLAPACK), FUJITSU)
+	-D MKL_LIBRARIES=\"$(SCALAPACKLIB) $(BLASLIB)\"
+else
 FISTR_CMAKE_OPTS += \
-	-D WITH_MKL=OFF \
-	-D CMAKE_Fortran_MODDIR_FLAG=-M \
-	-D BLAS_LIBRARIES=-SSL2BLAMP \
-	-D LAPACK_LIBRARIES=-SSL2BLAMP \
-	-D SCALAPACK_LIBRARIES=-SCALAPACK \
-	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
-	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
-	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS)
-      else
+	-D WITH_MKL=OFF
+endif
+
+ifeq ($(BLASLAPACK), FUJITSU)
 FISTR_CMAKE_OPTS += \
-	-D WITH_MKL=OFF \
-	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
-	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
-	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
-      endif
-    endif
-  endif
+	-D CMAKE_Fortran_MODDIR_FLAG=-M
 endif
 
 $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
