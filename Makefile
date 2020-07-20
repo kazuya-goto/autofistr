@@ -758,40 +758,9 @@ TRILINOS_CMAKE_OPTS = \
 	-D Scotch_LIBRARY_DIRS=$(PREFIX)/$(SCOTCH)/lib \
 	-D TPL_ENABLE_BLAS=ON \
 	-D TPL_ENABLE_LAPACK=ON \
+	-D TPL_BLAS_LIBRARIES:STRING=\"$(BLASLIB)\" \
+	-D TPL_LAPACK_LIBRARIES:STRING=\"$(LAPACKLIB)\" \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
-
-ifeq ($(BLASLAPACK), OpenBLAS)
-TRILINOS_CMAKE_OPTS += \
-	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/include \
-	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
-	-D BLAS_LIBRARY_NAMES:STRING=\"openblas\" \
-	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(OPENBLAS)/lib \
-	-D LAPACK_LIBRARY_NAMES:STRING=\"openblas\"
-else
-  ifeq ($(BLASLAPACK), ATLAS)
-TRILINOS_CMAKE_OPTS += \
-	-D BLAS_INCLUDE_DIRS:PATH=$(PREFIX)/$(ATLAS)/include \
-	-D BLAS_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
-	-D BLAS_LIBRARY_NAMES:STRING=\"f77blas;cblas;atlas\" \
-	-D LAPACK_LIBRARY_DIRS:PATH=$(PREFIX)/$(ATLAS)/lib \
-	-D LAPACK_LIBRARY_NAMES:STRING=\"lapack;f77blas;cblas;atlas\"
-  else
-    ifeq ($(BLASLAPACK), MKL)
-TRILINOS_CMAKE_OPTS += \
-	-D BLAS_INCLUDE_DIRS:PATH=$(MKLROOT)/include \
-	-D BLAS_LIBRARY_DIRS:PATH=\"$(MKLROOT)/lib/intel64\" \
-	-D BLAS_LIBRARY_NAMES:STRING=\"mkl_intel_lp64;mkl_sequential;mkl_core\" \
-	-D LAPACK_LIBRARY_DIRS:PATH=\"$(MKLROOT)/lib/intel64\" \
-	-D LAPACK_LIBRARY_NAMES:STRING=\"mkl_intel_lp64;mkl_sequential;mkl_core\"
-    else
-      ifeq ($(BLASLAPACK), FUJITSU)
-TRILINOS_CMAKE_OPTS += \
-	-D TPL_BLAS_LIBRARIES:STRING=\"-SSL2\" \
-	-D TPL_LAPACK_LIBRARIES:STRING=\"-SSL2\"
-      endif
-    endif
-  endif
-endif
 
 $(PREFIX)/$(TRILINOS)/lib/libml.a: Trilinos-$(TRILINOS) metis parmetis scotch mumps
 	(cd Trilinos-$(TRILINOS); mkdir build; cd build; \
