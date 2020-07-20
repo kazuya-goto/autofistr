@@ -60,6 +60,14 @@ TARGET =
 ###
 
 ifeq ($(COMPILER), FUJITSU)
+  ifneq ($(BLASLAPACK), FUJITSU)
+    $(warning forced to use FUJITSU BLASLAPACK)
+    BLASLAPACK = FUJITSU
+  endif
+  ifneq ($(MPI), FUJITSU)
+    $(warning forced to use FUJITSU MPI)
+    MPI = FUJITSU
+  endif
   PREFIX = $(TOPDIR)/$(COMPILER)
 else
   # detect SYSTEM MPI
@@ -322,16 +330,8 @@ ifeq ($(COMPILER), FUJITSU)
   #NOFOR_MAIN = -mlcmain=main
   NOFOR_MAIN =
   NOFOR_MAIN_C = -DMAIN_COMP
-  ifneq ($(BLASLAPACK), FUJITSU)
-    $(warning forced to use FUJITSU BLASLAPACK)
-    BLASLAPACK = FUJITSU
-  endif
   BLASLIB = -SSL2BLAMP
   LAPACKLIB = -SSL2BLAMP
-  ifneq ($(MPI), FUJITSU)
-    $(warning forced to use FUJITSU MPI)
-    MPI = FUJITSU
-  endif
   MPICC = mpifcc
   MPICXX = mpiFCC
   MPIF90 = mpifrt
