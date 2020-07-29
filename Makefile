@@ -301,7 +301,7 @@ ifeq ($(COMPILER), GCC)
     CXXFLAGS = -O0 -g
     FCFLAGS = -O0 -g
   endif
-  GCC_VER = $(shell gcc -dumpversion)
+  GCC_VER = $(shell gfortran -dumpversion | perl -pe 's/\..*//;')
   ifeq ($(GCC_VER), 10)
     FCFLAGS += -fallow-argument-mismatch
   endif
@@ -546,7 +546,9 @@ $(SCALAPACK): $(SCALAPACK).tgz
 
 SCALAPACK_CMAKE_OPTS = \
 	-D CMAKE_C_COMPILER=$(CC) \
+	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_Fortran_COMPILER=$(FC) \
+	-D CMAKE_Fortran_FLAGS=\"$(FCFLAGS)\" \
 	-D MPI_C_COMPILER=$(MPICC) \
 	-D MPI_Fortran_COMPILER=$(MPIF90) \
 	-D CMAKE_EXE_LINKER_FLAGS=$(OMPFLAGS) \
