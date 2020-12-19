@@ -267,7 +267,7 @@ ifeq ($(COMPILER), INTEL)
     CXXFLAGS = -O0 -g -traceback
     FCFLAGS = -O0 -g -CB -CU -traceback
   endif
-  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\.\d+\.\d+.*//;')
+  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\..*//;')
   $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
   ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
     OMPFLAGS = -qopenmp
