@@ -663,7 +663,7 @@ ifeq ($(metisversion), 4)
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: parmetis
 else
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
-	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) && \
+	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
 	make --no-print-directory -j $(NJOBS) install)
 endif
 
@@ -702,7 +702,7 @@ ifeq ($(metisversion), 4)
 	if [ ! -d $(PREFIX)/$(PARMETIS)/include/METISLib ]; then mkdir -p $(PREFIX)/$(PARMETIS)/include/METISLib; fi && \
 	cp METISLib/*.h $(PREFIX)/$(PARMETIS)/include/METISLib)
 else
-	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=\"$(MPICC)\" cxx=\"$(MPICXX)\" && \
+	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=\"$(MPICC)\" cxx=\"$(MPICXX)\" openmp=1 && \
 	make --no-print-directory -j $(NJOBS) install)
 endif
 
