@@ -1,17 +1,17 @@
 # BUILD_TYPE: {RELEASE, DEBUG}
 BUILD_TYPE = RELEASE
 
-# COMPILER: {INTEL, GCC, FUJITSU}
-COMPILER = INTEL
+# COMPILER: {GCC, INTEL, FUJITSU}
+COMPILER = GCC
 
-# MPI: {IMPI, OpenMPI, MPICH, FUJITSU}
-MPI = IMPI
+# MPI: {MPICH, OpenMPI, IMPI, FUJITSU}
+MPI = MPICH
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
 
-# BLASLAPACK: {MKL, OpenBLAS, ATLAS, FUJITSU, SYSTEM}
-BLASLAPACK = MKL
+# BLASLAPACK: {OpenBLAS, ATLAS, MKL, FUJITSU, SYSTEM}
+BLASLAPACK = SYSTEM
 # additional configure option for ATLAS
 #ATLAS_CONFIG_FLAGS = --cripple-atlas-performance
 
@@ -20,6 +20,18 @@ BLASLAPACK = MKL
 #BLASLIB = -lblas
 # LAPACKLIB (optional): system LAPACK lib (default: -llapack)
 #LAPACKLIB = -llapack
+
+# SCALAPACK is automatically selected besed on BLASLAPACK
+# -------------------------------------------
+# BLASLAPACK | SCALAPACK
+# -----------+-------------------------------
+# OpenBLAS   | Download from netlib
+# ATLAS      | Download from netlib
+# MKL        | MKL
+# FUJITSU    | FUJITSU
+# SYSTEM     | SYSTEM or Download from netlib
+# -------------------------------------------
+
 # SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
 #SCALAPACKLIB = -lscalapack
 

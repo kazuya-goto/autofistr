@@ -211,6 +211,29 @@ else
         BLASLIB ?= -lblas
         LAPACKLIB ?= -llapack
         SCALAPACKLIB ?= -lscalapack
+        # check SYSTEM BLAS
+        HAVE_BLAS = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(BLASLIB) > /dev/null 2>&1 && echo true)
+        ifeq ($(HAVE_BLAS), true)
+          $(info SYSTEM BLAS found)
+        else
+          $(error SYSTEM BLAS not found)
+        endif
+        # check SYSTEM LAPACK
+        HAVE_LAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(LAPACKLIB) > /dev/null 2>&1 && echo true)
+        ifeq ($(HAVE_LAPACK), true)
+          $(info SYSTEM LAPACK found)
+        else
+          $(error SYSTEM LAPACK not found)
+        endif
+        # check SYSTEM SCALAPACK
+        HAVE_SCALAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
+        ifeq ($(HAVE_SCALAPACK), true)
+          $(info SYSTEM SCALAPACK found)
+        else
+          $(info SYSTEM SCALAPACK not found; set to be downloaded from netlib)
+          TARGET += scalapack
+          SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+        endif
       else
         $(error unsupported BLASLAPACK: $(BLASLAPACK))
       endif
