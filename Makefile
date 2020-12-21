@@ -228,17 +228,21 @@ ifeq ($(DOWNLOAD_MPI), true)
     PACKAGES += $(OPENMPI).tar.bz2
     PKG_DIRS += $(OPENMPI)
     TARGET += openmpi
+    MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
+    MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
+    MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
+    MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
   endif
   ifeq ($(MPI), MPICH)
     MPI_INST = mpich
     PACKAGES += $(MPICH).tar.gz
     PKG_DIRS += $(MPICH)
     TARGET += mpich
+    MPICC = $(PREFIX)/$(MPICH)/bin/mpicc
+    MPICXX = $(PREFIX)/$(MPICH)/bin/mpicxx
+    MPIF90 = $(PREFIX)/$(MPICH)/bin/mpif90
+    MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
   endif
-  MPICC = $(PREFIX)/$(OPENMPI)/bin/mpicc
-  MPICXX = $(PREFIX)/$(OPENMPI)/bin/mpicxx
-  MPIF90 = $(PREFIX)/$(OPENMPI)/bin/mpif90
-  MPIEXEC = $(PREFIX)/$(OPENMPI)/bin/mpiexec
 else
   MPICC = mpicc
   MPICXX = mpicxx
