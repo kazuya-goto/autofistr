@@ -26,10 +26,10 @@ $(info BLASLAPACK is $(BLASLAPACK))
 ### Package versions
 ###
 
-CMAKE     = cmake-3.17.3
-OPENMPI   = openmpi-4.0.4
+CMAKE     = cmake-3.19.2
+OPENMPI   = openmpi-4.1.0
 MPICH     = mpich-3.3.2
-OPENBLAS  = OpenBLAS-0.3.10
+OPENBLAS  = OpenBLAS-0.3.13
 ATLAS     = atlas3.10.3
 LAPACK    = lapack-3.9.0
 SCALAPACK = scalapack-2.1.0
@@ -40,12 +40,12 @@ else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
 endif
-SCOTCH    = scotch_6.0.9
-MUMPS     = MUMPS_5.3.3
+SCOTCH    = scotch_6.1.0
+MUMPS     = MUMPS_5.3.5
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
-  TRILINOS  = trilinos-release-12-18-1
+  TRILINOS  = trilinos-release-13-0-1
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
