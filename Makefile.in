@@ -4,7 +4,7 @@ BUILD_TYPE = RELEASE
 # COMPILER: {GCC, INTEL, FUJITSU}
 COMPILER = GCC
 
-# MPI: {MPICH, OpenMPI, IMPI, FUJITSU}
+# MPI: {MPICH, OpenMPI, IMPI, FUJITSU, NONE}
 MPI = MPICH
 
 # DOWNLOAD_MPI (optional): {true, false}
@@ -39,7 +39,7 @@ BLASLAPACK = SYSTEM
 NJOBS = 4
 
 # misc. options
-# Old style build with setup.sh instead of cmake
+# Old style build with setup.sh instead of cmake (required when MPI==NONE)
 #fistrbuild = old
 # Use metis4/parmetis3 instead of metis5/parmetis4
 #metisversion = 4

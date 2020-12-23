@@ -70,37 +70,42 @@ ifeq ($(COMPILER), FUJITSU)
   endif
   PREFIX = $(TOPDIR)/$(COMPILER)
 else
-  # detect SYSTEM MPI
-  ifneq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
-    $(info SYSTEM MPI is OpenMPI)
-    SYSTEM_MPI = OpenMPI
+  ifeq ($(MPI), NONE)
+    DOWNLOAD_MPI = false
+    PREFIX = $(TOPDIR)/$(COMPILER)
   else
-  ifneq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
-    $(info SYSTEM MPI is MPICH)
-    SYSTEM_MPI = MPICH
-  else
-  ifneq ("$(shell mpicc -v 2> /dev/null | grep 'Intel(R) MPI')", "")
-    $(info SYSTEM MPI is IntelMPI)
-    SYSTEM_MPI = IMPI
-  else
-    $(info SYSTEM MPI is unknown)
-    SYSTEM_MPI = unknown
-  endif
-  endif
-  endif
-
-  ifeq ($(MPI), $(SYSTEM_MPI))
-    DOWNLOAD_MPI ?= false
-  else
-    ifeq ($(MPI), IMPI)
-      $(error Intel MPI not found in PATH)
+    # detect SYSTEM MPI
+    ifneq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
+      $(info SYSTEM MPI is OpenMPI)
+      SYSTEM_MPI = OpenMPI
     else
-      DOWNLOAD_MPI = true
+    ifneq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
+      $(info SYSTEM MPI is MPICH)
+      SYSTEM_MPI = MPICH
+    else
+    ifneq ("$(shell mpicc -v 2> /dev/null | grep 'Intel(R) MPI')", "")
+      $(info SYSTEM MPI is IntelMPI)
+      SYSTEM_MPI = IMPI
+    else
+      $(info SYSTEM MPI is unknown)
+      SYSTEM_MPI = unknown
     endif
-  endif
-  $(info DOWNLOAD_MPI is $(DOWNLOAD_MPI))
+    endif
+    endif
 
-  PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
+    ifeq ($(MPI), $(SYSTEM_MPI))
+      DOWNLOAD_MPI ?= false
+    else
+      ifeq ($(MPI), IMPI)
+        $(error Intel MPI not found in PATH)
+      else
+        DOWNLOAD_MPI = true
+      endif
+    endif
+    $(info DOWNLOAD_MPI is $(DOWNLOAD_MPI))
+
+    PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
+  endif
 endif
 
 ###
@@ -267,32 +272,39 @@ ifeq ($(DOWNLOAD_MPI), true)
     MPIEXEC = $(PREFIX)/$(MPICH)/bin/mpiexec
   endif
 else
-  MPICC = mpicc
-  MPICXX = mpicxx
-  MPIF90 = mpif90
-  MPIEXEC = mpiexec
-  ifeq ($(COMPILER), INTEL)
-    ifeq ($(MPI), OPENMPI)
-      ifeq ("$(shell mpicc --showme:version 2> /dev/null | grep 'icc version')", "")
-        $(error SYSTEM OpenMPI is not built with INTEL; set DOWNLOAD_MPI=true and try again)
-      endif
-    endif
-    ifeq ($(MPI), MPICH)
-      ifeq ("$(shell mpicc -v 2> /dev/null | grep 'icc version')", "")
-        $(error SYSTEM MPICH is not built with INTEL; set DOWNLOAD_MPI=true and try again)
-      endif
-    endif
-    ifeq ($(MPI), IMPI)
-      MPICC = mpiicc
-      MPICXX = mpiicpc
-      MPIF90 = mpiifort
-    endif
-  endif
-  ifeq ($(COMPILER), FUJITSU)
-    MPICC = mpifcc
-    MPICXX = mpiFCC
-    MPIF90 = mpifrt
+  ifeq ($(MPI), NONE)
+    MPICC = $(CC)
+    MPICXX = $(CXX)
+    MPIF90 = $(FC)
+    MPIEXEC =
+  else
+    MPICC = mpicc
+    MPICXX = mpicxx
+    MPIF90 = mpif90
     MPIEXEC = mpiexec
+    ifeq ($(COMPILER), INTEL)
+      ifeq ($(MPI), OPENMPI)
+        ifeq ("$(shell mpicc --showme:version 2> /dev/null | grep 'icc version')", "")
+          $(error SYSTEM OpenMPI is not built with INTEL; set DOWNLOAD_MPI=true and try again)
+        endif
+      endif
+      ifeq ($(MPI), MPICH)
+        ifeq ("$(shell mpicc -v 2> /dev/null | grep 'icc version')", "")
+          $(error SYSTEM MPICH is not built with INTEL; set DOWNLOAD_MPI=true and try again)
+        endif
+      endif
+      ifeq ($(MPI), IMPI)
+        MPICC = mpiicc
+        MPICXX = mpiicpc
+        MPIF90 = mpiifort
+      endif
+    endif
+    ifeq ($(COMPILER), FUJITSU)
+      MPICC = mpifcc
+      MPICXX = mpiFCC
+      MPIF90 = mpifrt
+      MPIEXEC = mpiexec
+    endif
   endif
 endif
 
@@ -318,20 +330,30 @@ endif
 ###
 
 ifeq ($(BLASLAPACK), OpenBLAS)
-  PACKAGES += $(OPENBLAS).tar.gz $(SCALAPACK).tgz
-  PKG_DIRS += $(OPENBLAS) $(SCALAPACK)
-  TARGET += openblas scalapack
+  PACKAGES += $(OPENBLAS).tar.gz
+  PKG_DIRS += $(OPENBLAS)
+  TARGET += openblas
   BLASLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
   LAPACKLIB = -L$(PREFIX)/$(OPENBLAS)/lib -lopenblas
-  SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  ifneq ($(MPI), NONE)
+    PACKAGES += $(SCALAPACK).tgz
+    PKG_DIRS += $(SCALAPACK)
+    TARGET += scalapack
+    SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  endif
 else
 ifeq ($(BLASLAPACK), ATLAS)
-  PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz $(SCALAPACK).tgz
-  PKG_DIRS += $(ATLAS) $(SCALAPACK)
-  TARGET += atlas scalapack
+  PACKAGES += $(ATLAS).tar.bz2 $(LAPACK).tar.gz
+  PKG_DIRS += $(ATLAS)
+  TARGET += atlas
   BLASLIB = -L$(PREFIX)/$(ATLAS)/lib -lf77blas -lcblas -latlas
   LAPACKLIB = -L$(PREFIX)/$(ATLAS)/lib -llapack -lf77blas -lcblas -latlas
-  SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  ifneq ($(MPI), NONE)
+    PACKAGES += $(SCALAPACK).tgz
+    PKG_DIRS += $(SCALAPACK)
+    TARGET += scalapack
+    SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  endif
 else
 ifeq ($(BLASLAPACK), MKL)
   ifeq ("$(MKLROOT)", "")
@@ -355,18 +377,22 @@ ifeq ($(BLASLAPACK), MKL)
   # LAPACK
   LAPACKLIB = $(BLASLIB)
   # ScaLAPACK
+  ifeq ($(MPI), NONE)
+    SCALAPACKLIB =
+  else
   ifeq ($(MPI), IMPI)
     SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
   else
-    ifeq ($(MPI), OpenMPI)
-      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-    else
-      ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-      else
-        $(error unsupported MPI: $(MPI))
-      endif
-    endif
+  ifeq ($(MPI), OpenMPI)
+    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+  else
+  ifeq ($(MPI), MPICH)
+    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+  else
+    $(error unsupported MPI: $(MPI))
+  endif
+  endif
+  endif
   endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
@@ -393,13 +419,15 @@ ifeq ($(BLASLAPACK), SYSTEM)
     $(error SYSTEM LAPACK not found)
   endif
   # check SYSTEM SCALAPACK
-  HAVE_SCALAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
-  ifeq ($(HAVE_SCALAPACK), true)
-    $(info SYSTEM SCALAPACK found)
-  else
-    $(info SYSTEM SCALAPACK not found; set to be downloaded from netlib)
-    TARGET += scalapack
-    SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+  ifneq ($(MPI), NONE)
+    HAVE_SCALAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
+    ifeq ($(HAVE_SCALAPACK), true)
+      $(info SYSTEM SCALAPACK found)
+    else
+      $(info SYSTEM SCALAPACK not found; set to be downloaded from netlib)
+      TARGET += scalapack
+      SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+    endif
   endif
 else
   $(error unsupported BLASLAPACK: $(BLASLAPACK))
@@ -437,9 +465,16 @@ ifneq ($(metisversion), 4)
   PKG_DIRS += $(METIS)
   TARGET += metis
 endif
-PACKAGES += $(PARMETIS).tar.gz $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS).tar.gz
-PKG_DIRS += $(PARMETIS) $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS)
-TARGET += parmetis scotch mumps trilinos
+
+ifneq ($(MPI), NONE)
+  PACKAGES += $(PARMETIS).tar.gz
+  PKG_DIRS += $(PARMETIS)
+  TARGET += parmetis
+endif
+
+PACKAGES += $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS).tar.gz
+PKG_DIRS += $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS)
+TARGET += scotch mumps trilinos
 
 ifeq ("$(shell [ -f $(REFINER).tar.gz ] && echo true)", "true")
   WITH_REFINER = 1
@@ -722,6 +757,7 @@ $(SCOTCH): $(SCOTCH).tar.gz
 	tar zxvf $<
 	touch $@
 
+ifneq ($(MPI), NONE)
 $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 	perl -pe \
 	"if(/^CCS/){s!= .*!= $(CC)!;} \
@@ -737,6 +773,21 @@ $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 	if [ ! -d $(PREFIX)/$(SCOTCH) ]; then mkdir $(PREFIX)/$(SCOTCH); fi && \
 	make prefix=$(PREFIX)/$(SCOTCH) install && \
 	cp -f ../lib/*esmumps*.a $(PREFIX)/$(SCOTCH)/lib)
+else
+$(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH)
+	perl -pe \
+	"if(/^CCS/){s!= .*!= $(CC)!;} \
+	elsif(/^CCP/){s!= .*!= $(MPICC)!;} \
+	elsif(/^CCD/){s!= .*!= $(MPICC)!;} \
+	elsif(/^CFLAGS/){s!-O3!$(CFLAGS)!; s!-DSCOTCH_PTHREAD!!;}" \
+	$(SCOTCH)/src/Make.inc/$(SCOTCH_MAKEFILE_INC) > $(SCOTCH)/src/Makefile.inc
+	(cd $(SCOTCH)/src && \
+	make -j $(NJOBS) scotch && \
+	make esmumps && \
+	if [ ! -d $(PREFIX)/$(SCOTCH) ]; then mkdir $(PREFIX)/$(SCOTCH); fi && \
+	make prefix=$(PREFIX)/$(SCOTCH) install && \
+	cp -f ../lib/*esmumps*.a $(PREFIX)/$(SCOTCH)/lib)
+endif
 
 scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 .PHONY: scotch
@@ -754,14 +805,26 @@ $(MUMPS): $(MUMPS).tar.gz
 	tar zxvf $<
 	touch $@
 
-MUMPS_DEPS = $(MUMPS) metis parmetis scotch
-ifeq ($(BLASLAPACK), OpenBLAS)
-MUMPS_DEPS += scalapack
-endif
-ifeq ($(BLASLAPACK), ATLAS)
-MUMPS_DEPS += scalapack
+MUMPS_DEPS = $(MUMPS) metis scotch
+ifneq ($(MPI), NONE)
+  MUMPS_DEPS += $(MPI_INST) parmetis
 endif
 
+ifneq ($(MPI), NONE)
+  ifeq ($(BLASLAPACK), OpenBLAS)
+    MUMPS_DEPS += scalapack
+  endif
+  ifeq ($(BLASLAPACK), ATLAS)
+    MUMPS_DEPS += scalapack
+  endif
+  ifeq ($(BLASLAPACK), SYSTEM)
+    ifneq ($(HAVE_SCALAPACK), true)
+      MUMPS_DEPS += scalapack
+    endif
+  endif
+endif
+
+ifneq ($(MPI), NONE)
 $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
@@ -785,7 +848,32 @@ endif
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
-
+else
+$(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
+	perl -pe \
+	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
+	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
+	s!%mpicc%!$(MPICC)!; \
+	s!%mpif90%!$(MPIF90)!; \
+	s!%lapack_libs%!$(LAPACKLIB)!; \
+	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
+	s!%blas_libs%!$(BLASLIB)!; \
+	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
+	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
+	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
+	MUMPS_Makefile.inc.seq > $(MUMPS)/Makefile.inc  ### to be fixed
+ifeq ($(metisversion), 4)
+	perl -i -pe \
+	"s!Dmetis!Dmetis4!; \
+	s!Dparmetis!Dparmetis3!; \
+	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
+	$(MUMPS)/Makefile.inc
+endif
+	(cd $(MUMPS) && make -j $(NJOBS) && \
+	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
+	cp -r lib include $(PREFIX)/$(MUMPS)/. && \
+	cp libseq/libmpiseq.a $(PREFIX)/$(MUMPS)/lib/.)
+endif
 
 mumps: $(PREFIX)/$(MUMPS)/lib/libdmumps.a
 .PHONY: mumps
@@ -811,8 +899,6 @@ TRILINOS_CMAKE_OPTS = \
 	-D CMAKE_CXX_COMPILER=\"$(MPICXX)\" \
 	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
 	-D Trilinos_ENABLE_CXX11=ON \
-	-D TPL_ENABLE_MPI=ON \
-	-D MPI_EXEC=$(MPIEXEC) \
 	-D Trilinos_ENABLE_Fortran:BOOL=OFF \
 	-D Trilinos_ENABLE_OpenMP:BOOL=ON \
 	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
@@ -825,12 +911,6 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_METIS=ON \
 	-D METIS_INCLUDE_DIRS=$(PREFIX)/$(PARMETIS)/include \
 	-D METIS_LIBRARY_DIRS=$(PREFIX)/$(PARMETIS)/lib \
-	-D TPL_ENABLE_ParMETIS=ON \
-	-D ParMETIS_INCLUDE_DIRS=$(PREFIX)/$(PARMETIS)/include \
-	-D ParMETIS_LIBRARY_DIRS=$(PREFIX)/$(PARMETIS)/lib \
-	-D TPL_ENABLE_MUMPS=ON \
-	-D MUMPS_INCLUDE_DIRS=$(PREFIX)/$(MUMPS)/include \
-	-D MUMPS_LIBRARY_DIRS=$(PREFIX)/$(MUMPS)/lib \
 	-D TPL_ENABLE_Scotch=ON \
 	-D Scotch_INCLUDE_DIRS=$(PREFIX)/$(SCOTCH)/include \
 	-D Scotch_LIBRARY_DIRS=$(PREFIX)/$(SCOTCH)/lib \
@@ -839,8 +919,24 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_BLAS_LIBRARIES:STRING=\"$(BLASLIB)\" \
 	-D TPL_LAPACK_LIBRARIES:STRING=\"$(LAPACKLIB)\" \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
+ifneq ($(MPI), NONE)
+TRILINOS_CMAKE_OPTS += \
+	-D TPL_ENABLE_MPI=ON \
+	-D MPI_EXEC=$(MPIEXEC) \
+	-D TPL_ENABLE_ParMETIS=ON \
+	-D ParMETIS_INCLUDE_DIRS=$(PREFIX)/$(PARMETIS)/include \
+	-D ParMETIS_LIBRARY_DIRS=$(PREFIX)/$(PARMETIS)/lib \
+	-D TPL_ENABLE_MUMPS=ON \
+	-D MUMPS_INCLUDE_DIRS=$(PREFIX)/$(MUMPS)/include \
+	-D MUMPS_LIBRARY_DIRS=$(PREFIX)/$(MUMPS)/lib
+endif
 
-$(PREFIX)/$(TRILINOS)/lib/libml.a: Trilinos-$(TRILINOS) metis parmetis scotch mumps
+TRILINOS_DEPS = Trilinos-$(TRILINOS) metis scotch mumps
+ifneq ($(MPI), NONE)
+  TRILINOS_DEPS += $(MPI_INST) parmetis
+endif
+
+$(PREFIX)/$(TRILINOS)/lib/libml.a: $(TRILINOS_DEPS)
 	(cd Trilinos-$(TRILINOS); mkdir build; cd build; \
 	echo "cmake $(TRILINOS_CMAKE_OPTS) .." > run_cmake.sh; \
 	sh run_cmake.sh; \
@@ -862,7 +958,7 @@ $(REFINER): $(REFINER).tar.gz
 
 $(PREFIX)/$(REFINER)/lib/libRcapRefiner.a: $(REFINER)
 	(cd $(REFINER); \
-	ARCH=$(ARCH) CC="$(MPICC)" CFLAGS="$(CFLAGS)" CXX="$(MPICXX)" CXXFLAGS="$(CXXFLAGS)" F90="$(MPIF90)" FFLAGS="$(FCFLAGS)" make Refiner; \
+	ARCH=$(ARCH) CC="$(MPICC)" CFLAGS="$(CFLAGS)" CXX="$(MPICXX)" CXXFLAGS="$(CXXFLAGS)" F90="$(MPIF90)" FFLAGS="$(FCFLAGS)" make -j $(NJOBS) Refiner; \
 	mkdir -p $(PREFIX)/$(REFINER)/include $(PREFIX)/$(REFINER)/lib; \
 	cp Refiner/rcapRefiner.h $(PREFIX)/$(REFINER)/include; \
 	cp lib/$(ARCH)/libRcapRefiner.a $(PREFIX)/$(REFINER)/lib)
@@ -880,21 +976,36 @@ $(FISTR):
 		git clone https://gitlab.com/FrontISTR-Commons/FrontISTR.git $(FISTR); \
 	fi
 
-SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
-F90LDFLAGS = $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
+ifneq ($(MPI), NONE)
+  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
+else
+  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lesmumps -lscotch -lscotcherr
+endif
 
+F90LDFLAGS := $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
+ifeq ($(MPI), NONE)
+  F90LDFLAGS := -L$(PREFIX)/$(MUMPS)/lib -lmpiseq $(F90LDFLAGS)
+endif
 
 ifeq ($(fistrbuild), old)
 #
 # Old style build with setup.sh
 #
-FISTR_SETUP_OPTS = -p --with-tools --with-metis --with-parmetis --with-mumps --with-ml --with-lapack
-
-ifeq ($(WITH_REFINER), 1)
-FISTR_SETUP_OPTS += --with-refiner
+FISTR_SETUP_OPTS = --with-tools --with-metis --with-mumps --with-ml --with-lapack
+ifneq ($(MPI), NONE)
+  FISTR_SETUP_OPTS += -p --with-parmetis
 endif
 
-$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
+ifeq ($(WITH_REFINER), 1)
+  FISTR_SETUP_OPTS += --with-refiner
+endif
+
+FISTR_DEPS = $(FISTR) metis mumps trilinos
+ifneq ($(MPI), NONE)
+  FISTR_DEPS += parmetis
+endif
+
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
@@ -945,30 +1056,40 @@ FISTR_CMAKE_OPTS = \
 	-D CMAKE_Fortran_COMPILER=\"$(MPIF90)\" \
 	-D CMAKE_Fortran_FLAGS=\"$(FCFLAGS) $(OMPFLAGS)\" \
 	-D WITH_TOOLS=1 \
-	-D WITH_MPI=1 \
 	-D WITH_OPENMP=1 \
 	-D WITH_REFINER=$(WITH_REFINER) \
 	-D WITH_REVOCAP=0 \
 	-D WITH_METIS=1 \
 	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
 	-D METIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libmetis.a \
-	-D WITH_PARMETIS=1 \
-	-D PARMETIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
-	-D PARMETIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libparmetis.a \
 	-D WITH_LAPACK=1 \
-	-D WITH_MUMPS=1 \
-	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
-	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\" \
 	-D WITH_ML=1 \
 	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
 	-D WITH_DOC=0 \
 	-D BLAS_LIBRARIES=\"$(BLASLIB)\" \
 	-D LAPACK_LIBRARIES=\"$(LAPACKLIB)\" \
-	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\" \
 	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
 	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
 	-D OpenMP_Fortran_FLAGS=$(OMPFLAGS) \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(FISTR)
+
+ifneq ($(MPI), NONE)
+FISTR_CMAKE_OPTS += \
+	-D WITH_MPI=1 \
+	-D WITH_PARMETIS=1 \
+	-D PARMETIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
+	-D PARMETIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libparmetis.a \
+	-D WITH_MUMPS=1 \
+	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\" \
+	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
+else
+FISTR_CMAKE_OPTS += \
+	-D WITH_MPI=OFF \
+	-D WITH_MUMPS=1 \
+	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a;$(PREFIX)/$(SCOTCH)/lib/libscotcherr.a\"
+endif
 
 ifeq ($(WITH_REFINER), 1)
 FISTR_CMAKE_OPTS += \
@@ -992,7 +1113,12 @@ FISTR_CMAKE_OPTS += \
 	-D CMAKE_Fortran_MODDIR_FLAG=-M
 endif
 
-$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) metis parmetis mumps trilinos
+FISTR_DEPS = $(FISTR) metis mumps trilinos
+ifneq ($(MPI), NONE)
+FISTR_DEPS += $(MPI_INST) parmetis
+endif
+
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	(cd $(FISTR); mkdir build; cd build; cmake --version; \
 	echo "cmake $(FISTR_CMAKE_OPTS) .." > run_cmake.sh; \
 	sh run_cmake.sh; \
