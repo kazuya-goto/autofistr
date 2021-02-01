@@ -1,3 +1,7 @@
+undefine CC
+undefine CXX
+undefine FC
+
 include Makefile.in
 
 ##########################
@@ -74,10 +78,14 @@ else
     DOWNLOAD_MPI = false
     PREFIX = $(TOPDIR)/$(COMPILER)
   else
+  ifeq ($(MPI), OTHER)
+    DOWNLOAD_MPI = false
+    PREFIX = $(TOPDIR)/$(COMPILER)_OTHER
+  else
     # detect SYSTEM MPI
     ifneq ("$(shell mpicc --showme:version 2> /dev/null | grep 'Open MPI')", "")
       $(info SYSTEM MPI is OpenMPI)
-      SYSTEM_MPI = OpenMPI
+      SYSTEM_MPI = OPENMPI
     else
     ifneq ("$(shell mpicc -v 2> /dev/null | grep 'MPICH')", "")
       $(info SYSTEM MPI is MPICH)
@@ -105,6 +113,7 @@ else
     $(info DOWNLOAD_MPI is $(DOWNLOAD_MPI))
 
     PREFIX = $(TOPDIR)/$(COMPILER)_$(MPI)
+  endif
   endif
 endif
 
@@ -161,97 +170,180 @@ endif
 ###
 
 ifeq ($(COMPILER), GCC)
-  CC = gcc
-  CXX = g++
-  FC = gfortran
-  ifeq ("$(shell which gcc)", "")
-    $(error gcc not found in PATH)
+  CC ?= gcc
+  CXX ?= g++
+  FC ?= gfortran
+  # check existence of compiler commands
+  ifeq ("$(shell which $(CC))", "")
+    $(error $(CC) not found in PATH)
   endif
-  ifeq ("$(shell which g++)", "")
-    $(error g++ not found in PATH)
+  ifeq ("$(shell which $(CXX))", "")
+    $(error $(CXX) not found in PATH)
   endif
-  ifeq ("$(shell which gfortran)", "")
-    $(error gfortran not found in PATH)
+  ifeq ("$(shell which $(FC))", "")
+    $(error $(FC) not found in PATH)
   endif
   ifeq ($(BUILD_TYPE), RELEASE)
-    CFLAGS = -O3 -mtune=native
-    CXXFLAGS = -O3 -mtune=native
-    FCFLAGS = -O3 -mtune=native
+    CFLAGS ?= -O3 -mtune=native
+    CXXFLAGS ?= -O3 -mtune=native
+    FCFLAGS ?= -O3 -mtune=native
   else
-    CFLAGS = -O0 -g
-    CXXFLAGS = -O0 -g
-    FCFLAGS = -O0 -g
+    CFLAGS ?= -O0 -g
+    CXXFLAGS ?= -O0 -g
+    FCFLAGS ?= -O0 -g
   endif
-  GCC_VER = $(shell gfortran -dumpversion | perl -pe 's/\..*//;')
+  GCC_VER = $(shell $(FC) -dumpversion | perl -pe 's/\..*//;')
   ifeq ($(GCC_VER), 10)
     FCFLAGS += -fallow-argument-mismatch
   endif
-  OMPFLAGS = -fopenmp
-  NOFOR_MAIN =
-  LIBSTDCXX := -lstdc++
-  F90FPPFLAG = -cpp
-endif
+  OMPFLAGS ?= -fopenmp
+  NOFOR_MAIN ?=
+  NOFOR_MAIN_C ?=
+  NOFOR_MAIN_LD ?=
+  LIBSTDCXX ?= -lstdc++
+  F90FPPFLAG ?= -cpp
+else
 ifeq ($(COMPILER), INTEL)
-  CC = icc
-  CXX = icpc
-  FC = ifort
-  ifeq ("$(shell which icc)", "")
-    $(error icc not found in PATH)
+  CC ?= icc
+  CXX ?= icpc
+  FC ?= ifort
+  # check existence of compiler commands
+  ifeq ("$(shell which $(CC))", "")
+    $(error $(CC) not found in PATH)
   endif
-  ifeq ("$(shell which icpc)", "")
-    $(error icpc not found in PATH)
+  ifeq ("$(shell which $(CXX))", "")
+    $(error $(CXX) not found in PATH)
   endif
-  ifeq ("$(shell which ifort)", "")
-    $(error ifort not found in PATH)
+  ifeq ("$(shell which $(FC))", "")
+    $(error $(FC) not found in PATH)
   endif
   ifeq ($(BUILD_TYPE), RELEASE)
-    CFLAGS = -O3
-    CXXFLAGS = -O3
-    FCFLAGS = -O3
+    CFLAGS ?= -O3
+    CXXFLAGS ?= -O3
+    FCFLAGS ?= -O3
   else
-    CFLAGS = -O0 -g -traceback
-    CXXFLAGS = -O0 -g -traceback
-    FCFLAGS = -O0 -g -CB -CU -traceback
+    CFLAGS ?= -O0 -g -traceback
+    CXXFLAGS ?= -O0 -g -traceback
+    FCFLAGS ?= -O0 -g -CB -CU -traceback
   endif
   IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\..*//;')
   $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
   ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
-    OMPFLAGS = -qopenmp
+    OMPFLAGS ?= -qopenmp
   else
-    OMPFLAGS = -openmp
+    OMPFLAGS ?= -openmp
   endif
   $(info OMPFLAGS is $(OMPFLAGS))
-  NOFOR_MAIN = -nofor_main
-  LIBSTDCXX := -lstdc++
-  F90FPPFLAG = -fpp
-endif
-ifeq ($(COMPILER), FUJITSU)
-  CC = fcc
-  CXX = FCC
-  FC = frt
-  ifeq ($(BUILD_TYPE), RELEASE)
-    CFLAGS = -Kfast -Xg
-    CXXFLAGS = -Kfast -Xg
-    FCFLAGS = -Kfast
-  else
-    CFLAGS = -O0 -Xg
-    CXXFLAGS = -O0 -Xg
-    FCFLAGS = -O0 -Xg
+  NOFOR_MAIN ?= -nofor-main
+  NOFOR_MAIN_C ?=
+  NOFOR_MAIN_LD ?= -nofor-main
+  LIBSTDCXX ?= -lstdc++
+  F90FPPFLAG ?= -fpp
+else
+ifeq ($(COMPILER), NVIDIA)
+  CC ?= nvc
+  CXX ?= nvc++
+  FC ?= nvfortran
+  # check existence of compiler commands
+  ifeq ("$(shell which $(CC))", "")
+    $(error $(CC) not found in PATH)
   endif
-  OMPFLAGS = -Kopenmp
+  ifeq ("$(shell which $(CXX))", "")
+    $(error $(CXX) not found in PATH)
+  endif
+  ifeq ("$(shell which $(FC))", "")
+    $(error $(FC) not found in PATH)
+  endif
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS ?= -fast -O3
+    CXXFLAGS ?= -fast -O3
+    FCFLAGS ?= -fast -O3
+  else
+    CFLAGS ?= -O0 -g -Mbounds -traceback
+    CXXFLAGS ?= -O0 -g -Mbounds -traceback
+    FCFLAGS ?= -O0 -g -Mbounds -traceback
+  endif
+  OMPFLAGS ?= -mp
+  NOFOR_MAIN ?= -Mnomain
+  NOFOR_MAIN_C ?= -DMAIN_COMP
+  NOFOR_MAIN_LD ?=
+  LIBSTDCXX ?= -lstdc++
+  F90FPPFLAG ?= -Mpreprocess
+else
+ifeq ($(COMPILER), FUJITSU)
+  CC ?= fcc
+  CXX ?= FCC
+  FC ?= frt
+  # check existence of compiler commands
+  ifeq ("$(shell which $(CC))", "")
+    $(error $(CC) not found in PATH)
+  endif
+  ifeq ("$(shell which $(CXX))", "")
+    $(error $(CXX) not found in PATH)
+  endif
+  ifeq ("$(shell which $(FC))", "")
+    $(error $(FC) not found in PATH)
+  endif
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS ?= -Kfast -Xg
+    CXXFLAGS ?= -Kfast -Xg
+    FCFLAGS ?= -Kfast
+  else
+    CFLAGS ?= -O0 -Xg
+    CXXFLAGS ?= -O0 -Xg
+    FCFLAGS ?= -O0 -Xg
+  endif
+  OMPFLAGS ?= -Kopenmp
   #NOFOR_MAIN = -mlcmain=main
-  NOFOR_MAIN =
-  NOFOR_MAIN_C = -DMAIN_COMP
-  LIBSTDCXX :=
-  F90FPPFLAG = -Cpp -Cfpp
+  NOFOR_MAIN ?=
+  NOFOR_MAIN_C ?= -DMAIN_COMP
+  NOFOR_MAIN_LD ?=
+  LIBSTDCXX ?=
+  F90FPPFLAG ?= -Cpp -Cfpp
+else
+  CC ?= cc
+  CXX ?= c++
+  FC ?= f95
+  # check existence of compiler commands
+  ifeq ("$(shell which $(CC))", "")
+    $(error $(CC) not found in PATH)
+  endif
+  ifeq ("$(shell which $(CXX))", "")
+    $(error $(CXX) not found in PATH)
+  endif
+  ifeq ("$(shell which $(FC))", "")
+    $(error $(FC) not found in PATH)
+  endif
+  ifeq ($(BUILD_TYPE), RELEASE)
+    CFLAGS ?= -O3
+    CXXFLAGS ?= -O3
+    FCFLAGS ?= -O3
+  else
+    CFLAGS ?= -O0 -g
+    CXXFLAGS ?= -O0 -g
+    FCFLAGS ?= -O0 -g
+  endif
+  OMPFLAGS ?= -fopenmp
+  NOFOR_MAIN ?=
+  NOFOR_MAIN_C ?=
+  NOFOR_MAIN_LD ?=
+  LIBSTDCXX ?=
+  F90FPPFLAG ?= -cpp
 endif
+endif
+endif
+endif
+
+$(info CC = $(CC))
+$(info CXX = $(CXX))
+$(info FC = $(FC))
 
 ###
 ### MPI settings
 ###
 
 ifeq ($(DOWNLOAD_MPI), true)
-  ifeq ($(MPI), OpenMPI)
+  ifeq ($(MPI), OPENMPI)
     MPI_INST = openmpi
     PACKAGES += $(OPENMPI).tar.bz2
     PKG_DIRS += $(OPENMPI)
@@ -277,19 +369,20 @@ else
     MPICXX = $(CXX)
     MPIF90 = $(FC)
     MPIEXEC =
+    SCALAPACKLIB =
   else
-    MPICC = mpicc
-    MPICXX = mpicxx
-    MPIF90 = mpif90
-    MPIEXEC = mpiexec
+    MPICC ?= mpicc
+    MPICXX ?= mpicxx
+    MPIF90 ?= mpif90
+    MPIEXEC ?= mpiexec
     ifeq ($(COMPILER), INTEL)
       ifeq ($(MPI), OPENMPI)
-        ifeq ("$(shell mpicc --showme:version 2> /dev/null | grep 'icc version')", "")
+        ifeq ("$(shell $(MPICC) --showme:version 2> /dev/null | grep 'icc version')", "")
           $(error SYSTEM OpenMPI is not built with INTEL; set DOWNLOAD_MPI=true and try again)
         endif
       endif
       ifeq ($(MPI), MPICH)
-        ifeq ("$(shell mpicc -v 2> /dev/null | grep 'icc version')", "")
+        ifeq ("$(shell $(MPICC) -v 2> /dev/null | grep 'icc version')", "")
           $(error SYSTEM MPICH is not built with INTEL; set DOWNLOAD_MPI=true and try again)
         endif
       endif
@@ -308,18 +401,18 @@ else
   endif
 endif
 
+$(info MPICC = $(MPICC))
+$(info MPICXX = $(MPICXX))
+$(info MPIF90 = $(MPIF90))
+$(info MPIEXEC = $(MPIEXEC))
+
 ifeq ($(MPI), OPENMPI)
-  LIBSTDCXX := -lmpi_cxx $(LIBSTDCXX)
+  LIBMPICXX = -lmpi_cxx
 endif
 
-ifeq ($(COMPILER), GCC)
-  CLINKER = $(MPICC)
-  F90LINKER = $(MPIF90)
-endif
-ifeq ($(COMPILER), INTEL)
-  CLINKER = $(MPICC)
-  F90LINKER = $(MPIF90)
-endif
+CLINKER ?= $(MPICC)
+F90LINKER ?= $(MPIF90)
+
 ifeq ($(COMPILER), FUJITSU)
   CLINKER = $(MPICXX)
   F90LINKER = $(MPICXX) --linkfortran
@@ -377,13 +470,10 @@ ifeq ($(BLASLAPACK), MKL)
   # LAPACK
   LAPACKLIB = $(BLASLIB)
   # ScaLAPACK
-  ifeq ($(MPI), NONE)
-    SCALAPACKLIB =
-  else
   ifeq ($(MPI), IMPI)
     SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
   else
-  ifeq ($(MPI), OpenMPI)
+  ifeq ($(MPI), OPENMPI)
     SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
   else
   ifeq ($(MPI), MPICH)
@@ -393,26 +483,33 @@ ifeq ($(BLASLAPACK), MKL)
   endif
   endif
   endif
-  endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
   BLASLIB = -SSL2BLAMP
   LAPACKLIB = -SSL2BLAMP
-  SCALAPACKLIB = -SCALAPACK
+  ifneq ($(MPI), NONE)
+    SCALAPACKLIB = -SCALAPACK
+  endif
 else
 ifeq ($(BLASLAPACK), SYSTEM)
   BLASLIB ?= -lblas
   LAPACKLIB ?= -llapack
-  SCALAPACKLIB ?= -lscalapack
+  ifneq ($(MPI), NONE)
+    ifeq ($(COMPILER), NVIDIA)
+      SCALAPACKLIB ?= -Mscalapack
+    else
+      SCALAPACKLIB ?= -lscalapack
+    endif
+  endif
   # check SYSTEM BLAS
-  HAVE_BLAS = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(BLASLIB) > /dev/null 2>&1 && echo true)
+  HAVE_BLAS = $(shell echo 'program test\nend program' > test.f90 && $(FC) test.f90 $(BLASLIB) > /dev/null 2>&1 && echo true)
   ifeq ($(HAVE_BLAS), true)
     $(info SYSTEM BLAS found)
   else
     $(error SYSTEM BLAS not found)
   endif
   # check SYSTEM LAPACK
-  HAVE_LAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(LAPACKLIB) > /dev/null 2>&1 && echo true)
+  HAVE_LAPACK = $(shell echo 'program test\nend program' > test.f90 && $(FC) test.f90 $(LAPACKLIB) > /dev/null 2>&1 && echo true)
   ifeq ($(HAVE_LAPACK), true)
     $(info SYSTEM LAPACK found)
   else
@@ -420,7 +517,7 @@ ifeq ($(BLASLAPACK), SYSTEM)
   endif
   # check SYSTEM SCALAPACK
   ifneq ($(MPI), NONE)
-    HAVE_SCALAPACK = $(shell echo 'int main(){}' > test.c && $(CC) test.c $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
+    HAVE_SCALAPACK = $(shell echo 'program test\nend program' > test.f90 && $(MPIF90) test.f90 $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
     ifeq ($(HAVE_SCALAPACK), true)
       $(info SYSTEM SCALAPACK found)
     else
@@ -835,7 +932,7 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
 	s!%blas_libs%!$(BLASLIB)!; \
 	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
-	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
+	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
 ifeq ($(metisversion), 4)
@@ -859,7 +956,7 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
 	s!%blas_libs%!$(BLASLIB)!; \
 	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
-	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
+	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc.seq > $(MUMPS)/Makefile.inc  ### to be fixed
 ifeq ($(metisversion), 4)
@@ -982,7 +1079,7 @@ else
   SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lesmumps -lscotch -lscotcherr
 endif
 
-F90LDFLAGS := $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBSTDCXX)
+F90LDFLAGS := $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBMPICXX) $(LIBSTDCXX)
 ifeq ($(MPI), NONE)
   F90LDFLAGS := -L$(PREFIX)/$(MUMPS)/lib -lmpiseq $(F90LDFLAGS)
 endif
@@ -1015,7 +1112,7 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
-	s!%ldflags%!$(OMPFLAGS) -lm $(LIBSTDCXX)!; \
+	s!%ldflags%!$(OMPFLAGS) -lm $(LIBMPICXX) $(LIBSTDCXX)!; \
 	s!%coptflags%!$(CFLAGS)!; \
 	s!%clinker%!$(CLINKER)!; \
 	s!%mpicxx%!$(MPICXX)!; \
@@ -1146,7 +1243,7 @@ env2-code:
 	fi
 
 $(PREFIX)/bashrc:
-ifeq ($(MPI), OpenMPI)
+ifeq ($(MPI), OPENMPI)
 	perl -pe 's!%mpidir%!$(PREFIX)/$(OPENMPI)!;' bashrc.template > $(PREFIX)/bashrc
 else
   ifeq ($(MPI), MPICH)

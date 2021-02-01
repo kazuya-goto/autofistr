@@ -1,14 +1,38 @@
 # BUILD_TYPE: {RELEASE, DEBUG}
 BUILD_TYPE = RELEASE
 
-# COMPILER: {GCC, INTEL, FUJITSU}
+# COMPILER: {GCC, INTEL, NVIDIA, FUJITSU, OTHER}
 COMPILER = GCC
 
-# MPI: {MPICH, OpenMPI, IMPI, FUJITSU, NONE}
+# (optional) any of the following variables can be defined to override default settings
+#CC            = cc
+#CXX           = c++
+#FC            = f95
+#CFLAGS        = -O3
+#CXXFLAGS      = -O3
+#FCFLAGS       = -O3
+#OMPFLAGS      = -fopenmp
+#NOFOR_MAIN    =
+#NOFOR_MAIN_C  =
+#NOFOR_MAIN_LD =
+#LIBSTDCXX     = -lstdc++
+#F90FPPFLAG    = -cpp
+
+# MPI: {MPICH, OPENMPI, IMPI, FUJITSU, NONE}
 MPI = MPICH
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
+
+# (optional) any of the following variables can be defined to override default settings
+# only when using MPI installed on the system
+#MPICC     = mpicc
+#MPICXX    = mpicxx
+#MPIF90    = mpif90
+#MPIEXEC   = mpiexec
+#LIBMPICXX = -lmpi_cxx
+#CLINKER   = mpicc
+#F90LINKER = mpif90
 
 # BLASLAPACK: {OpenBLAS, ATLAS, MKL, FUJITSU, SYSTEM}
 BLASLAPACK = SYSTEM
@@ -33,7 +57,7 @@ BLASLAPACK = SYSTEM
 # -------------------------------------------
 
 # SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
-#SCALAPACKLIB = -lscalapack
+#SCALAPACKLIB := -lscalapack
 
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
