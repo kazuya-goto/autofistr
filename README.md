@@ -8,6 +8,7 @@ If you have REVOCAP_Refiner downloaded in the top directory, it will be built to
 Please make sure that you accept all the license agreements of FrontISTR and its external packages
 before you use this tool.
 
+The newest version is available at [https://gitlab.com/kgoto/autofistr](https://gitlab.com/kgoto/autofistr).
 
 ## System Requirements
 1. Operating Systems: Linux, Mac OS X
