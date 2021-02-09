@@ -470,18 +470,20 @@ ifeq ($(BLASLAPACK), MKL)
   # LAPACK
   LAPACKLIB = $(BLASLIB)
   # ScaLAPACK
-  ifeq ($(MPI), IMPI)
-    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-  else
-  ifeq ($(MPI), OPENMPI)
-    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-  else
-  ifeq ($(MPI), MPICH)
-    SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-  else
-    $(error unsupported MPI: $(MPI))
-  endif
-  endif
+  ifneq ($(MPI), NONE)
+    ifeq ($(MPI), IMPI)
+      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+    else
+    ifeq ($(MPI), OPENMPI)
+      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+    else
+    ifeq ($(MPI), MPICH)
+      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+    else
+      $(error unsupported MPI: $(MPI))
+    endif
+    endif
+    endif
   endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
