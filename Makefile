@@ -453,37 +453,59 @@ ifeq ($(BLASLAPACK), MKL)
     $(error MKLROOT not set; please make sure the environment variables are correctly set)
   endif
   # BLAS
-  ifeq ($(COMPILER), INTEL)
-    BLASLIB = -Wl,--start-group \
-      ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
-      ${MKLROOT}/lib/intel64/libmkl_intel_thread.a \
-      ${MKLROOT}/lib/intel64/libmkl_core.a \
-      -Wl,--end-group -liomp5
+  ifeq ("$(shell uname)", "Linux")
+    MKL_LIBDIR := ${MKLROOT}/lib/intel64
+    ifeq ($(COMPILER), INTEL)
+      BLASLIB = -Wl,--start-group \
+        ${MKL_LIBDIR}/libmkl_intel_lp64.a \
+        ${MKL_LIBDIR}/libmkl_intel_thread.a \
+        ${MKL_LIBDIR}/libmkl_core.a \
+        -Wl,--end-group -liomp5
+    endif
+    ifeq ($(COMPILER), GCC)
+      BLASLIB = -Wl,--start-group \
+        ${MKL_LIBDIR}/libmkl_gf_lp64.a \
+        ${MKL_LIBDIR}/libmkl_gnu_thread.a \
+        ${MKL_LIBDIR}/libmkl_core.a \
+        -Wl,--end-group -lgomp -ldl
+    endif
+    # LAPACK
+    LAPACKLIB = $(BLASLIB)
+    # ScaLAPACK
+    ifneq ($(MPI), NONE)
+      ifeq ($(MPI), IMPI)
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+      else
+      ifeq ($(MPI), OPENMPI)
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+      else
+      ifeq ($(MPI), MPICH)
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+      else
+        $(error unsupported MPI: $(MPI))
+      endif
+      endif
+      endif
+    endif
+  else
+  ifeq ("$(shell uname)", "Darwin")
+    MKL_LIBDIR := ${MKLROOT}/lib
+    BLASLIB = \
+      ${MKL_LIBDIR}/libmkl_intel_lp64.a \
+      ${MKL_LIBDIR}/libmkl_intel_thread.a \
+      ${MKL_LIBDIR}/libmkl_core.a \
+      -liomp5
+    # LAPACK
+    LAPACKLIB = $(BLASLIB)
+    # ScaLAPACK
+    ifneq ($(MPI), NONE)
+      ifeq ($(MPI), MPICH)
+        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
+      else
+        $(error unsupported MPI: $(MPI) (MKL on Darwin supports MPICH only))
+      endif
+    endif
   endif
-  ifeq ($(COMPILER), GCC)
-    BLASLIB = -Wl,--start-group \
-      ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
-      ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
-      ${MKLROOT}/lib/intel64/libmkl_core.a \
-      -Wl,--end-group -lgomp -ldl
-  endif
-  # LAPACK
-  LAPACKLIB = $(BLASLIB)
-  # ScaLAPACK
-  ifneq ($(MPI), NONE)
-    ifeq ($(MPI), IMPI)
-      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-    else
-    ifeq ($(MPI), OPENMPI)
-      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-    else
-    ifeq ($(MPI), MPICH)
-      SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-    else
-      $(error unsupported MPI: $(MPI))
-    endif
-    endif
-    endif
   endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
@@ -580,7 +602,13 @@ ifeq ("$(shell [ -f $(REFINER).tar.gz ] && echo true)", "true")
   PKG_DIRS += $(REFINER)
   TARGET += refiner
   #ARCH = $(shell ruby -e 'puts RUBY_PLATFORM')
-  ARCH = x86_64-linux
+  ifeq ("$(shell uname)", "Linux")
+    ARCH = x86_64-linux
+  else
+  ifeq ("$(shell uname)", "Darwin")
+    ARCH = x86_64-darwin
+  endif
+  endif
 else
   WITH_REFINER = 0
 endif
