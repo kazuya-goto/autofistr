@@ -1056,8 +1056,18 @@ $(REFINER): $(REFINER).tar.gz
 	touch $@
 
 $(PREFIX)/$(REFINER)/lib/libRcapRefiner.a: $(REFINER)
+	perl -pe \
+	"s!%arch%!$(ARCH)!; \
+	s!%cc%!$(CC)!; \
+	s!%cflags%!$(CFLAGS)!; \
+	s!%cxx%!$(CXX)!; \
+	s!%cxxflags%!$(CXXFLAGS)!; \
+	s!%f90%!$(F90)!; \
+	s!%f90flags%!$(FCFLAGS)!; \
+	s!%libstdcxx%!$(LIBSTDCXX)!;" \
+	REVOCAP_Refiner_MakefileConfig.in > $(REFINER)/MakefileConfig.in
 	(cd $(REFINER); \
-	ARCH=$(ARCH) CC="$(MPICC)" CFLAGS="$(CFLAGS)" CXX="$(MPICXX)" CXXFLAGS="$(CXXFLAGS)" F90="$(MPIF90)" FFLAGS="$(FCFLAGS)" make -j $(NJOBS) Refiner; \
+	make -j $(NJOBS) Refiner; \
 	mkdir -p $(PREFIX)/$(REFINER)/include $(PREFIX)/$(REFINER)/lib; \
 	cp Refiner/rcapRefiner.h $(PREFIX)/$(REFINER)/include; \
 	cp lib/$(ARCH)/libRcapRefiner.a $(PREFIX)/$(REFINER)/lib)
