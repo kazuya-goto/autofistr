@@ -30,6 +30,10 @@ $(info BLASLAPACK is $(BLASLAPACK))
 ### Package versions
 ###
 
+CMAKE_MINVER_MAJOR := 2
+CMAKE_MINVER_MINOR := 8
+CMAKE_MINVER_PATCH := 11
+
 CMAKE     = cmake-3.19.2
 OPENMPI   = openmpi-4.1.0
 MPICH     = mpich-3.3.2
@@ -50,6 +54,9 @@ ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
   TRILINOS  = trilinos-release-13-0-1
+  CMAKE_MINVER_MAJOR := 3
+  CMAKE_MINVER_MINOR := 10
+  CMAKE_MINVER_PATCH := 0
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
@@ -127,9 +134,6 @@ export PATH := $(PREFIX)/$(CMAKE)/bin:$(PATH)
 ifeq ("$(shell PATH=$(PATH) which cmake)", "")
   $(info CMAKE not found)
 else
-  CMAKE_MINVER_MAJOR = 2
-  CMAKE_MINVER_MINOR = 8
-  CMAKE_MINVER_PATCH = 11
   CMAKE_MINVER=$(CMAKE_MINVER_MAJOR).$(CMAKE_MINVER_MINOR).$(CMAKE_MINVER_PATCH)
 
   CMAKE_VER_MAJOR = $(shell LANG=C PATH=$(PATH) cmake --version | perl -ne 'if(/cmake version/){s/cmake version //; s/\.\d+\.\d+.*//;print;}')
