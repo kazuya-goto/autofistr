@@ -1031,7 +1031,6 @@ TRILINOS_CMAKE_OPTS = \
 	-D OpenMP_C_FLAGS=$(OMPFLAGS) \
 	-D OpenMP_CXX_FLAGS=$(OMPFLAGS) \
 	-D Trilinos_ENABLE_Epetra=ON \
-	-D Trilinos_ENABLE_Zoltan=ON \
 	-D Trilinos_ENABLE_Amesos=ON \
 	-D Trilinos_ENABLE_ML=ON \
 	-D ML_ENABLE_Amesos=ON \
@@ -1050,6 +1049,7 @@ ifneq ($(MPI), NONE)
 TRILINOS_CMAKE_OPTS += \
 	-D TPL_ENABLE_MPI=ON \
 	-D MPI_EXEC=$(MPIEXEC) \
+	-D Trilinos_ENABLE_Zoltan=ON \
 	-D TPL_ENABLE_ParMETIS=ON \
 	-D ParMETIS_INCLUDE_DIRS=$(PREFIX)/$(PARMETIS)/include \
 	-D ParMETIS_LIBRARY_DIRS=$(PREFIX)/$(PARMETIS)/lib \
