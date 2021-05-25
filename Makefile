@@ -1229,7 +1229,7 @@ FISTR_CMAKE_OPTS += \
 	-D WITH_MPI=OFF \
 	-D WITH_MUMPS=1 \
 	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
-	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a;$(PREFIX)/$(SCOTCH)/lib/libscotcherr.a\"
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(MUMPS)/lib/libmpiseq.a;$(PREFIX)/$(SCOTCH)/lib/libesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a;$(PREFIX)/$(SCOTCH)/lib/libscotcherr.a\"
 endif
 
 ifeq ($(WITH_REFINER), 1)
@@ -1243,7 +1243,7 @@ FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=ON \
 	-D BLA_VENDOR=\"Intel10_64lp\" \
 	-D MKL_INCLUDE_PATH=$(MKLROOT)/include \
-	-D MKL_LIBRARIES=\"$(SCALAPACKLIB) $(BLASLIB)\"
+	-D MKL_LIBRARIES=\"$(BLASLIB)\"
 else
 FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=OFF
