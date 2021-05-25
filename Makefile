@@ -1137,6 +1137,10 @@ ifneq ($(MPI), NONE)
   FISTR_SETUP_OPTS += -p --with-parmetis
 endif
 
+ifeq ($(BLASLAPACK), MKL)
+  FISTR_SETUP_OPTS += --with-mkl
+endif
+
 ifeq ($(WITH_REFINER), 1)
   FISTR_SETUP_OPTS += --with-refiner
 endif
