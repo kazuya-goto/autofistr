@@ -494,11 +494,7 @@ ifeq ($(BLASLAPACK), MKL)
   else
   ifeq ("$(shell uname)", "Darwin")
     MKL_LIBDIR := ${MKLROOT}/lib
-    BLASLIB = \
-      ${MKL_LIBDIR}/libmkl_intel_lp64.a \
-      ${MKL_LIBDIR}/libmkl_intel_thread.a \
-      ${MKL_LIBDIR}/libmkl_core.a \
-      -liomp5
+    BLASLIB = -L${MKL_LIBDIR} -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
     # LAPACK
     LAPACKLIB = $(BLASLIB)
     # ScaLAPACK
@@ -506,7 +502,10 @@ ifeq ($(BLASLAPACK), MKL)
       ifeq ($(MPI), MPICH)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
       else
-        $(error unsupported MPI: $(MPI) (MKL on Darwin supports MPICH only))
+        PACKAGES += $(SCALAPACK).tgz
+        PKG_DIRS += $(SCALAPACK)
+        TARGET += scalapack
+        SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
       endif
     endif
   endif
