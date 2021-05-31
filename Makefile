@@ -1175,6 +1175,12 @@ ifeq ($(metisversion), 4)
 	"if(/^METISINCDIR/){s!include!include/METISLib!;}" \
 	$(FISTR)/Makefile.conf
 endif
+ifeq ($(BLASLAPACK), MKL)
+	perl -i -pe \
+	"s!%mkl_dir%!$(MKLROOT)!; \
+	s!%mkl_libdir%!$(MKL_LIBDIR)!;" \
+	$(FISTR)/Makefile.conf
+endif
 	(cd $(FISTR) && \
 	./setup.sh $(FISTR_SETUP_OPTS) && \
 	(cd hecmw1 && make) && (cd fistr1 && make) && \
