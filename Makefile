@@ -34,12 +34,12 @@ CMAKE_MINVER_MAJOR := 2
 CMAKE_MINVER_MINOR := 8
 CMAKE_MINVER_PATCH := 11
 
-CMAKE     = cmake-3.19.2
-OPENMPI   = openmpi-4.1.0
-MPICH     = mpich-3.3.2
-OPENBLAS  = OpenBLAS-0.3.13
+CMAKE     = cmake-3.20.3
+OPENMPI   = openmpi-4.1.1
+MPICH     = mpich-3.4.2
+OPENBLAS  = OpenBLAS-0.3.15
 ATLAS     = atlas3.10.3
-LAPACK    = lapack-3.9.0
+LAPACK    = lapack-3.9.1
 SCALAPACK = scalapack-2.1.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
@@ -49,7 +49,7 @@ else
   PARMETIS  = parmetis-4.0.3
 endif
 SCOTCH    = scotch_6.1.0
-MUMPS     = MUMPS_5.3.5
+MUMPS     = MUMPS_5.4.0
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
@@ -704,6 +704,7 @@ $(PREFIX)/$(MPICH)/bin/mpicc: $(MPICH)
 	../configure CC=$(CC) CXX=$(CXX) F77=$(FC) FC=$(FC) --enable-fast=all \
 	MPICHLIB_CFLAGS="$(CFLAGS)" MPICHLIB_FFLAGS="$(FCFLAGS)" \
 	MPICHLIB_CXXFLAGS="$(CXXFLAGS)" MPICHLIB_FCFLAGS="$(FCFLAGS)" \
+	--with-device=ch4:ofi \
 	-prefix=$(PREFIX)/$(MPICH); \
 	make -j $(NJOBS); make install)
 
