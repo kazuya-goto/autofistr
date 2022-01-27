@@ -1184,7 +1184,7 @@ ifeq ($(BLASLAPACK), MKL)
 endif
 	(cd $(FISTR) && \
 	./setup.sh $(FISTR_SETUP_OPTS) && \
-	(cd hecmw1 && make) && (cd fistr1 && make) && \
+	(cd hecmw1 && make -j $(NJOBS_F)) && (cd fistr1 && make -j $(NJOBS_F)) && \
 	if [ ! -d $(PREFIX)/$(FISTR)/bin ]; then mkdir -p $(PREFIX)/$(FISTR)/bin; fi && \
 	cp hecmw1/bin/* fistr1/bin/* $(PREFIX)/$(FISTR)/bin/.)
 	@echo
