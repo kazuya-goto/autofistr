@@ -49,7 +49,7 @@ else
   PARMETIS  = parmetis-4.0.3
 endif
 SCOTCH    = scotch_6.1.0
-MUMPS     = MUMPS_5.4.0
+MUMPS     = MUMPS_5.4.1
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
