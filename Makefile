@@ -200,6 +200,9 @@ ifeq ($(COMPILER), GCC)
   ifeq ($(GCC_VER), 10)
     FCFLAGS += -fallow-argument-mismatch
   endif
+  ifeq ($(GCC_VER), 11)
+    FCFLAGS += -fallow-argument-mismatch
+  endif
   OMPFLAGS ?= -fopenmp
   NOFOR_MAIN ?=
   NOFOR_MAIN_C ?=
