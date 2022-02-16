@@ -34,13 +34,13 @@ CMAKE_MINVER_MAJOR := 2
 CMAKE_MINVER_MINOR := 8
 CMAKE_MINVER_PATCH := 11
 
-CMAKE     = cmake-3.20.3
-OPENMPI   = openmpi-4.1.1
-MPICH     = mpich-3.4.2
-OPENBLAS  = OpenBLAS-0.3.15
+CMAKE     = cmake-3.22.2
+OPENMPI   = openmpi-4.1.2
+MPICH     = mpich-4.0
+OPENBLAS  = OpenBLAS-0.3.19
 ATLAS     = atlas3.10.3
-LAPACK    = lapack-3.9.1
-SCALAPACK = scalapack-2.1.0
+LAPACK    = lapack-3.10.0
+SCALAPACK = scalapack-2.2.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
   PARMETIS  = ParMetis-3.2.0
@@ -48,11 +48,15 @@ else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
 endif
-SCOTCH    = scotch_6.1.0
+SCOTCH    = scotch-v7.0.1
 MUMPS     = MUMPS_5.4.1
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
+  #TRILINOS  = trilinos-release-13-2-0
+  #CMAKE_MINVER_MAJOR := 3
+  #CMAKE_MINVER_MINOR := 17
+  #CMAKE_MINVER_PATCH := 0
   TRILINOS  = trilinos-release-13-0-1
   CMAKE_MINVER_MAJOR := 3
   CMAKE_MINVER_MINOR := 10
@@ -883,8 +887,10 @@ parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 ### SCOTCH
 ###
 
+SCOTCH_VER = $(shell echo $(SCOTCH) | perl -pe 's/scotch-//;')
+
 $(SCOTCH).tar.gz:
-	wget https://gforge.inria.fr/frs/download.php/latestfile/298/$@
+	wget https://gitlab.inria.fr/scotch/scotch/-/archive/$(SCOTCH_VER)/$@
 
 $(SCOTCH): $(SCOTCH).tar.gz
 	rm -rf $@

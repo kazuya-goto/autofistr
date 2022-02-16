@@ -19,7 +19,7 @@ COMPILER = GCC
 #F90FPPFLAG    = -cpp
 
 # MPI: {MPICH, OPENMPI, IMPI, FUJITSU, NONE}
-MPI = MPICH
+MPI = OPENMPI
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
@@ -57,7 +57,7 @@ BLASLAPACK = SYSTEM
 # -------------------------------------------
 
 # SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
-#SCALAPACKLIB := -lscalapack
+SCALAPACKLIB := -lscalapack-openmpi
 
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
