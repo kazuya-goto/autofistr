@@ -533,14 +533,14 @@ ifeq ($(BLASLAPACK), SYSTEM)
     endif
   endif
   # check SYSTEM BLAS
-  HAVE_BLAS = $(shell echo 'program test\nend program' > test.f90 && $(FC) test.f90 $(BLASLIB) > /dev/null 2>&1 && echo true)
+  HAVE_BLAS = $(shell echo -e 'program test\nend program' > test.f90 && $(FC) test.f90 $(BLASLIB) > /dev/null 2>&1 && echo true)
   ifeq ($(HAVE_BLAS), true)
     $(info SYSTEM BLAS found)
   else
     $(error SYSTEM BLAS not found)
   endif
   # check SYSTEM LAPACK
-  HAVE_LAPACK = $(shell echo 'program test\nend program' > test.f90 && $(FC) test.f90 $(LAPACKLIB) > /dev/null 2>&1 && echo true)
+  HAVE_LAPACK = $(shell echo -e 'program test\nend program' > test.f90 && $(FC) test.f90 $(LAPACKLIB) > /dev/null 2>&1 && echo true)
   ifeq ($(HAVE_LAPACK), true)
     $(info SYSTEM LAPACK found)
   else
@@ -548,7 +548,7 @@ ifeq ($(BLASLAPACK), SYSTEM)
   endif
   # check SYSTEM SCALAPACK
   ifneq ($(MPI), NONE)
-    HAVE_SCALAPACK = $(shell echo 'program test\nend program' > test.f90 && $(MPIF90) test.f90 $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
+    HAVE_SCALAPACK = $(shell echo -e 'program test\nend program' > test.f90 && $(MPIF90) test.f90 $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
     ifeq ($(HAVE_SCALAPACK), true)
       $(info SYSTEM SCALAPACK found)
     else
