@@ -201,10 +201,7 @@ ifeq ($(COMPILER), GCC)
     FCFLAGS ?= -O0 -g
   endif
   GCC_VER = $(shell $(FC) -dumpversion | perl -pe 's/\..*//;')
-  ifeq ($(GCC_VER), 10)
-    FCFLAGS += -fallow-argument-mismatch
-  endif
-  ifeq ($(GCC_VER), 11)
+  ifeq ("$(shell [ $(GCC_VER) -ge 10 ] && echo true)", "true")
     FCFLAGS += -fallow-argument-mismatch
   endif
   OMPFLAGS ?= -fopenmp
