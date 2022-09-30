@@ -833,7 +833,7 @@ ifeq ($(metisversion), 4)
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: parmetis
 else
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
-	(cd $(METIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
+	(cd $(METIS) && CXX=$(CXX) make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
 	make --no-print-directory -j $(NJOBS) install)
 endif
 
