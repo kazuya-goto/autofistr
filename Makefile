@@ -49,7 +49,7 @@ else
   PARMETIS  = parmetis-4.0.3
 endif
 SCOTCH    = scotch-v7.0.1
-MUMPS     = MUMPS_5.4.1
+MUMPS     = MUMPS_5.5.1
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
@@ -935,7 +935,7 @@ scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 ###
 
 $(MUMPS).tar.gz:
-	wget http://mumps.enseeiht.fr/$@
+	wget http://graal.ens-lyon.fr/MUMPS/$@
 
 $(MUMPS): $(MUMPS).tar.gz
 	rm -rf $@
