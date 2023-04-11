@@ -45,13 +45,8 @@ OPENBLAS  = OpenBLAS-0.3.19
 ATLAS     = atlas3.10.3
 LAPACK    = lapack-3.10.0
 SCALAPACK = scalapack-2.2.0
-ifeq ($(metisversion), 4)
-  METIS     = metis-4.0.3
-  PARMETIS  = ParMetis-3.2.0
-else
-  METIS     = metis-5.1.0
-  PARMETIS  = parmetis-4.0.3
-endif
+METIS     = metis-5.1.0
+PARMETIS  = parmetis-4.0.3
 SCOTCH    = scotch-v7.0.1
 MUMPS     = MUMPS_5.5.1
 ifeq ($(COMPILER), FUJITSU)
@@ -600,11 +595,9 @@ endif
 ### External packages and targets
 ###
 
-ifneq ($(metisversion), 4)
-  PACKAGES += $(METIS).tar.gz
-  PKG_DIRS += $(METIS)
-  TARGET += metis
-endif
+PACKAGES += $(METIS).tar.gz
+PKG_DIRS += $(METIS)
+TARGET += metis
 
 ifneq ($(MPI), NONE)
   PACKAGES += $(PARMETIS).tar.gz
@@ -830,24 +823,16 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 ###
 
 $(METIS).tar.gz:
-ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$@
-else
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$@
-endif
 
 $(METIS): $(METIS).tar.gz
 	rm -rf $@
 	tar zxvf $<
 	touch $@
 
-ifeq ($(metisversion), 4)
-$(PREFIX)/$(PARMETIS)/lib/libmetis.a: parmetis
-else
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
 	(cd $(METIS) && CXX=$(CXX) make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
 	make --no-print-directory -j $(NJOBS) install)
-endif
 
 metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 .PHONY: metis
@@ -858,11 +843,7 @@ metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 ###
 
 $(PARMETIS).tar.gz:
-ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$@
-else
 	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$@
-endif
 
 $(PARMETIS): $(PARMETIS).tar.gz
 	rm -rf $@
@@ -870,23 +851,8 @@ $(PARMETIS): $(PARMETIS).tar.gz
 	touch $@
 
 $(PREFIX)/$(PARMETIS)/lib/libparmetis.a: $(PARMETIS) $(MPI_INST)
-ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"if(/^CC/){s!= .*!= $(MPICC)!;} \
-	elsif(/^OPTFLAGS/){s!= .*!= $(CFLAGS)!;} \
-	elsif(/^LD/){s!= .*!= $(MPICC)!;}" \
-	$(PARMETIS)/Makefile.in
-	(cd $(PARMETIS) && make && \
-	if [ ! -d $(PREFIX)/$(PARMETIS)/lib ]; then mkdir -p $(PREFIX)/$(PARMETIS)/lib; fi && \
-	cp lib*.a $(PREFIX)/$(PARMETIS)/lib && \
-	if [ ! -d $(PREFIX)/$(PARMETIS)/include ]; then mkdir -p $(PREFIX)/$(PARMETIS)/include; fi && \
-	cp *.h $(PREFIX)/$(PARMETIS)/include && \
-	if [ ! -d $(PREFIX)/$(PARMETIS)/include/METISLib ]; then mkdir -p $(PREFIX)/$(PARMETIS)/include/METISLib; fi && \
-	cp METISLib/*.h $(PREFIX)/$(PARMETIS)/include/METISLib)
-else
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=\"$(MPICC)\" cxx=\"$(MPICXX)\" openmp=1 && \
 	make --no-print-directory -j $(NJOBS) install)
-endif
 
 parmetis: $(PREFIX)/$(PARMETIS)/lib/libparmetis.a
 .PHONY: parmetis
@@ -987,13 +953,6 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
-ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"s!Dmetis!Dmetis4!; \
-	s!Dparmetis!Dparmetis3!; \
-	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
-	$(MUMPS)/Makefile.inc
-endif
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
@@ -1011,13 +970,6 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
 	MUMPS_Makefile.inc.seq > $(MUMPS)/Makefile.inc  ### to be fixed
-ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"s!Dmetis!Dmetis4!; \
-	s!Dparmetis!Dparmetis3!; \
-	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
-	$(MUMPS)/Makefile.inc
-endif
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/. && \
@@ -1189,11 +1141,6 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	s!%fpp%!$(F90FPPFLAG)!; \
 	s!%f90linker%!$(F90LINKER)!;" \
 	FrontISTR_Makefile.conf > $(FISTR)/Makefile.conf
-ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"if(/^METISINCDIR/){s!include!include/METISLib!;}" \
-	$(FISTR)/Makefile.conf
-endif
 ifeq ($(BLASLAPACK), MKL)
 	perl -i -pe \
 	"s!%mkl_dir%!$(MKLROOT)!; \
@@ -1348,21 +1295,12 @@ clean:
 	if [ -d $(SCALAPACK) ]; then \
 		rm -rf $(SCALAPACK)/build; \
 	fi
-ifeq ($(metisversion), 4)
-	if [ -d $(METIS) ]; then \
-		(cd $(METIS) && make clean); \
-	fi
-	if [ -d $(PARMETIS) ]; then \
-		(cd $(PARMETIS) && make clean); \
-	fi
-else
 	if [ -d $(METIS) ]; then \
 		(cd $(METIS) && make distclean); \
 	fi
 	if [ -d $(PARMETIS) ]; then \
 		(cd $(PARMETIS) && make distclean); \
 	fi
-endif
 	if [ -d $(SCOTCH) ]; then \
 		(cd $(SCOTCH)/src && make realclean); \
 	fi

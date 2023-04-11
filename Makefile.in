@@ -69,5 +69,3 @@ NJOBS = 4
 # misc. options
 # Old style build with setup.sh instead of cmake (required when MPI==NONE)
 #fistrbuild = old
-# Use metis4/parmetis3 instead of metis5/parmetis4
-#metisversion = 4
