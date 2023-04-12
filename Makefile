@@ -45,8 +45,9 @@ OPENBLAS  = OpenBLAS-0.3.19
 ATLAS     = atlas3.10.3
 LAPACK    = lapack-3.10.0
 SCALAPACK = scalapack-2.2.0
-METIS     = metis-5.1.0
-PARMETIS  = parmetis-4.0.3
+GKLIB     = GKlib
+METIS     = METIS
+PARMETIS  = ParMETIS
 SCOTCH    = scotch-v7.0.1
 MUMPS     = MUMPS_5.5.1
 ifeq ($(COMPILER), FUJITSU)
@@ -595,12 +596,12 @@ endif
 ### External packages and targets
 ###
 
-PACKAGES += $(METIS).tar.gz
-PKG_DIRS += $(METIS)
-TARGET += metis
+PACKAGES += $(GKLIB) $(METIS)
+PKG_DIRS += $(GKLIB) $(METIS)
+TARGET += gklib metis
 
 ifneq ($(MPI), NONE)
-  PACKAGES += $(PARMETIS).tar.gz
+  PACKAGES += $(PARMETIS)
   PKG_DIRS += $(PARMETIS)
   TARGET += parmetis
 endif
@@ -819,16 +820,30 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 
 
 ###
+### GKLIB
+###
+
+$(GKLIB):
+	if [ ! -d $(GKLIB) ]; then \
+		git clone https://github.com/KarypisLab/GKlib.git $(GKLIB); \
+	fi
+
+$(PREFIX)/$(PARMETIS)/lib/libGKlib.a: $(GKLIB)
+	(cd $(GKLIB) && CXX=$(CXX) make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
+	make --no-print-directory -j $(NJOBS) install)
+
+gklib: $(PREFIX)/$(PARMETIS)/lib/libGKlib.a
+.PHONY: gklib
+
+
+###
 ### METIS
 ###
 
-$(METIS).tar.gz:
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$@
-
-$(METIS): $(METIS).tar.gz
-	rm -rf $@
-	tar zxvf $<
-	touch $@
+$(METIS):
+	if [ ! -d $(METIS) ]; then \
+		git clone https://github.com/KarypisLab/METIS.git $(METIS); \
+	fi
 
 $(PREFIX)/$(PARMETIS)/lib/libmetis.a: $(METIS)
 	(cd $(METIS) && CXX=$(CXX) make config prefix=$(PREFIX)/$(PARMETIS) cc=$(CC) openmp=1 && \
@@ -842,13 +857,10 @@ metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 ### ParMETIS
 ###
 
-$(PARMETIS).tar.gz:
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$@
-
-$(PARMETIS): $(PARMETIS).tar.gz
-	rm -rf $@
-	tar zxvf $<
-	touch $@
+$(PARMETIS):
+	if [ ! -d $(PARMETIS) ]; then \
+		git clone https://github.com/KarypisLab/ParMETIS.git $(PARMETIS); \
+	fi
 
 $(PREFIX)/$(PARMETIS)/lib/libparmetis.a: $(PARMETIS) $(MPI_INST)
 	(cd $(PARMETIS) && make config prefix=$(PREFIX)/$(PARMETIS) cc=\"$(MPICC)\" cxx=\"$(MPICXX)\" openmp=1 && \
@@ -1130,12 +1142,12 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
-	s!%ldflags%!$(OMPFLAGS) -lm $(LIBMPICXX) $(LIBSTDCXX)!; \
+	s!%ldflags%!$(OMPFLAGS) -L$(PREFIX)/$(PARMETIS)/lib -lGKlib -lm $(LIBMPICXX) $(LIBSTDCXX)!; \
 	s!%coptflags%!$(CFLAGS)!; \
 	s!%clinker%!$(CLINKER)!; \
 	s!%mpicxx%!$(MPICXX)!; \
 	s!%mpif90%!$(MPIF90)!; \
-	s!%f90ldflags%!$(F90LDFLAGS)!; \
+	s!%f90ldflags%!$(F90LDFLAGS) -L$(PREFIX)/$(PARMETIS)/lib -lGKlib!; \
 	s!%f90flags%!$(OMPFLAGS) $(NOFOR_MAIN)!; \
 	s!%f90optflags%!$(FCFLAGS)!; \
 	s!%fpp%!$(F90FPPFLAG)!; \
@@ -1178,7 +1190,7 @@ FISTR_CMAKE_OPTS = \
 	-D WITH_REVOCAP=0 \
 	-D WITH_METIS=1 \
 	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
-	-D METIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libmetis.a \
+	-D METIS_LIBRARIES=\"$(PREFIX)/$(PARMETIS)/lib/libmetis.a;$(PREFIX)/$(PARMETIS)/lib/libGKlib.a\" \
 	-D WITH_LAPACK=1 \
 	-D WITH_ML=1 \
 	-D CMAKE_PREFIX_PATH=$(PREFIX)/$(TRILINOS) \
@@ -1195,7 +1207,7 @@ FISTR_CMAKE_OPTS += \
 	-D WITH_MPI=1 \
 	-D WITH_PARMETIS=1 \
 	-D PARMETIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
-	-D PARMETIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libparmetis.a \
+	-D PARMETIS_LIBRARIES=\"$(PREFIX)/$(PARMETIS)/lib/libparmetis.a;$(PREFIX)/$(PARMETIS)/lib/libGKlib.a\" \
 	-D WITH_MUMPS=1 \
 	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
 	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\" \
@@ -1295,6 +1307,9 @@ clean:
 	if [ -d $(SCALAPACK) ]; then \
 		rm -rf $(SCALAPACK)/build; \
 	fi
+	if [ -d $(GKLIB) ]; then \
+		(cd $(GKLIB) && make distclean); \
+	fi
 	if [ -d $(METIS) ]; then \
 		(cd $(METIS) && make distclean); \
 	fi
@@ -1320,8 +1335,17 @@ clean:
 .PHONY: clean
 
 distclean:
-	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(METIS) $(PARMETIS) $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS) $(REFINER)
+	rm -rf $(CMAKE) $(OPENMPI) $(MPICH) $(OPENBLAS) $(ATLAS) $(SCALAPACK) $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS) $(REFINER)
 	rm -rf $(PREFIX)
+	if [ -d $(GKLIB) ]; then \
+		(cd $(GKLIB); make distclean); \
+	fi
+	if [ -d $(METIS) ]; then \
+		(cd $(METIS); make distclean); \
+	fi
+	if [ -d $(PARMETIS) ]; then \
+		(cd $(PARMETIS); make distclean); \
+	fi
 	if [ -d $(FISTR) ]; then \
 		if [ -d $(FISTR)/build ]; then rm -rf $(FISTR)/build; fi; \
 		if [ -f $(FISTR)/Makefile ]; then (cd $(FISTR); make distclean); fi; \

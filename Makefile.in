@@ -66,6 +66,8 @@ BLASLAPACK = OpenBLAS
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
 
-# misc. options
-# Old style build with setup.sh instead of cmake (required when MPI==NONE)
+# misc. options (all optional)
+# fistrbuilid: Old style build with setup.sh instead of cmake
 #fistrbuild = old
+# NJOBS_F: number of parallel make jobs for old style build of FrontISTR (default: 1)
+#NJOBS_F = 4

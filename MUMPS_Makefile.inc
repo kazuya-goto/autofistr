@@ -8,7 +8,7 @@ LPORD    = -L$(LPORDDIR) -lpord
 
 LMETISDIR = %metis_dir%/lib
 IMETIS    = -I%metis_dir%/include
-LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis
+LMETIS    = -L$(LMETISDIR) -lparmetis -lmetis -lGKlib
 
 ORDERINGSF = -Dscotch -Dmetis -Dpord -Dptscotch -Dparmetis
 ORDERINGSC  = $(ORDERINGSF)
