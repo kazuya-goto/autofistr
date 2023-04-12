@@ -23,6 +23,10 @@ NJOBS ?= 1
 
 $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
+ifeq ($(MPI), OTHER)
+  MPI_BASE ?= MPICH
+  $(info MPI_BASE is $(MPI_BASE))
+endif
 $(info BLASLAPACK is $(BLASLAPACK))
 
 
@@ -490,7 +494,15 @@ ifeq ($(BLASLAPACK), MKL)
       ifeq ($(MPI), MPICH)
         SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
       else
-        $(error unsupported MPI: $(MPI))
+        ifeq ($(MPI_BASE), MPICH)
+          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+        else
+        ifeq ($(MPI_BASE), OPENMPI)
+          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+        else
+          $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
+        endif
+        endif
       endif
       endif
       endif

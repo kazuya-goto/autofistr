@@ -19,7 +19,11 @@ COMPILER = GCC
 #F90FPPFLAG    = -cpp
 
 # MPI: {MPICH, OPENMPI, IMPI, FUJITSU, OTHER, NONE}
-MPI = OPENMPI
+MPI = MPICH
+
+# when MPI==OTHER, MPI_BASE can be specified (Intel MKL requires MPI_BASE to be either MPICH or OPENMPI)
+# MPI_BASE (optional): base of MPI implementation {MPICH, OPENMPI, OTHER} (default: MPICH)
+#MPI_BASE = OPENMPI
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
@@ -35,7 +39,7 @@ MPI = OPENMPI
 #F90LINKER = mpif90
 
 # BLASLAPACK: {OpenBLAS, ATLAS, MKL, FUJITSU, SYSTEM}
-BLASLAPACK = SYSTEM
+BLASLAPACK = OpenBLAS
 # additional configure option for ATLAS
 #ATLAS_CONFIG_FLAGS = --cripple-atlas-performance
 
@@ -57,7 +61,7 @@ BLASLAPACK = SYSTEM
 # -------------------------------------------
 
 # SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
-SCALAPACKLIB := -lscalapack-openmpi
+#SCALAPACKLIB := -lscalapack-openmpi
 
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
