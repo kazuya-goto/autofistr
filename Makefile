@@ -487,19 +487,19 @@ ifeq ($(BLASLAPACK), MKL)
     # ScaLAPACK
     ifneq ($(MPI), NONE)
       ifeq ($(MPI), IMPI)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
       else
       ifeq ($(MPI), OPENMPI)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
       else
       ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
       else
         ifeq ($(MPI_BASE), MPICH)
-          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
         else
         ifeq ($(MPI_BASE), OPENMPI)
-          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
         else
           $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
         endif
