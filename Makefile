@@ -52,7 +52,8 @@ else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
 endif
-SCOTCH    = scotch-v7.0.3
+#SCOTCH    = scotch-v7.0.3
+SCOTCH    = scotch-v6.1.3
 MUMPS     = MUMPS_5.5.1
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
@@ -904,7 +905,7 @@ $(SCOTCH).tar.gz:
 $(SCOTCH): $(SCOTCH).tar.gz
 	rm -rf $@
 	tar zxvf $<
-	(cd $(SCOTCH); patch -p 1 < ../$(SCOTCH).patch)
+	if [ -e $(SCOTCH).patch ]; then (cd $(SCOTCH); patch -p 1 < ../$(SCOTCH).patch); fi
 	touch $@
 
 ifneq ($(MPI), NONE)
