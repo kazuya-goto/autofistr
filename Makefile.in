@@ -43,6 +43,10 @@ BLASLAPACK = OpenBLAS
 # additional configure option for ATLAS
 #ATLAS_CONFIG_FLAGS = --cripple-atlas-performance
 
+# when BLASLAPACK==MKL and COMPILER==INTEL, MKLOPT can be specified
+# MKLOPT (optional): option to link with MKL
+#MKLOPT = -qmkl=cluster
+
 # when BLASLAPACK==SYSTEM, BLASLIB and LAPACKLIB can be specified
 # BLASLIB (optional): system BLAS lib (default: -lblas)
 #BLASLIB = -lblas

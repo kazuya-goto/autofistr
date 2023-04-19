@@ -465,67 +465,78 @@ ifeq ($(BLASLAPACK), MKL)
   ifeq ("$(MKLROOT)", "")
     $(error MKLROOT not set; please make sure the environment variables are correctly set)
   endif
-  # BLAS
-  ifeq ("$(shell uname)", "Linux")
-    MKL_LIBDIR := ${MKLROOT}/lib/intel64
-    ifeq ($(COMPILER), INTEL)
-      BLASLIB = -Wl,--start-group \
-        ${MKL_LIBDIR}/libmkl_intel_lp64.a \
-        ${MKL_LIBDIR}/libmkl_intel_thread.a \
-        ${MKL_LIBDIR}/libmkl_core.a \
-        -Wl,--end-group -liomp5
+  MKLOPT ?= NONE
+  ifneq ($(MKLOPT), NONE)
+    ifneq ($(COMPILER), INTEL)
+      $(error MKLOPT can be specified only when COMPILER==INTEL)
     endif
-    ifeq ($(COMPILER), GCC)
-      BLASLIB = -Wl,--start-group \
-        ${MKL_LIBDIR}/libmkl_gf_lp64.a \
-        ${MKL_LIBDIR}/libmkl_gnu_thread.a \
-        ${MKL_LIBDIR}/libmkl_core.a \
-        -Wl,--end-group -lgomp -ldl
-    endif
-    # LAPACK
-    LAPACKLIB = $(BLASLIB)
-    # ScaLAPACK
-    ifneq ($(MPI), NONE)
-      ifeq ($(MPI), IMPI)
-        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-      else
-      ifeq ($(MPI), OPENMPI)
-        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-      else
-      ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-      else
-        ifeq ($(MPI_BASE), MPICH)
+    BLASLIB = $(MKLOPT)
+    LAPACKLIB = $(MKLOPT)
+    SCALAPACKLIB = $(MKLOPT)
+  else
+    ifeq ("$(shell uname)", "Linux")
+      MKL_LIBDIR := ${MKLROOT}/lib/intel64
+      # BLAS
+      ifeq ($(COMPILER), INTEL)
+        BLASLIB = -Wl,--start-group \
+          ${MKL_LIBDIR}/libmkl_intel_lp64.a \
+          ${MKL_LIBDIR}/libmkl_intel_thread.a \
+          ${MKL_LIBDIR}/libmkl_core.a \
+          -Wl,--end-group -liomp5
+      endif
+      ifeq ($(COMPILER), GCC)
+        BLASLIB = -Wl,--start-group \
+          ${MKL_LIBDIR}/libmkl_gf_lp64.a \
+          ${MKL_LIBDIR}/libmkl_gnu_thread.a \
+          ${MKL_LIBDIR}/libmkl_core.a \
+          -Wl,--end-group -lgomp -ldl
+      endif
+      # LAPACK
+      LAPACKLIB = $(BLASLIB)
+      # ScaLAPACK
+      ifneq ($(MPI), NONE)
+        ifeq ($(MPI), IMPI)
           SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
         else
-        ifeq ($(MPI_BASE), OPENMPI)
+        ifeq ($(MPI), OPENMPI)
           SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
         else
-          $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
+        ifeq ($(MPI), MPICH)
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+        else
+          ifeq ($(MPI_BASE), MPICH)
+            SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          else
+          ifeq ($(MPI_BASE), OPENMPI)
+            SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+          else
+            $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
+          endif
+          endif
         endif
         endif
+        endif
       endif
-      endif
+    else
+    ifeq ("$(shell uname)", "Darwin")
+      MKL_LIBDIR := ${MKLROOT}/lib
+      # BLAS
+      BLASLIB = -L${MKL_LIBDIR} -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
+      # LAPACK
+      LAPACKLIB = $(BLASLIB)
+      # ScaLAPACK
+      ifneq ($(MPI), NONE)
+        ifeq ($(MPI), MPICH)
+          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
+        else
+          PACKAGES += $(SCALAPACK).tgz
+          PKG_DIRS += $(SCALAPACK)
+          TARGET += scalapack
+          SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+        endif
       endif
     endif
-  else
-  ifeq ("$(shell uname)", "Darwin")
-    MKL_LIBDIR := ${MKLROOT}/lib
-    BLASLIB = -L${MKL_LIBDIR} -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
-    # LAPACK
-    LAPACKLIB = $(BLASLIB)
-    # ScaLAPACK
-    ifneq ($(MPI), NONE)
-      ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
-      else
-        PACKAGES += $(SCALAPACK).tgz
-        PKG_DIRS += $(SCALAPACK)
-        TARGET += scalapack
-        SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
-      endif
     endif
-  endif
   endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
