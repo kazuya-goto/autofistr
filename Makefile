@@ -814,10 +814,11 @@ $(SCALAPACK): $(SCALAPACK).tgz
 	tar zxvf $(SCALAPACK).tgz
 	touch $@
 
+# provide MPICC and MPIF90 in place of CC and FC due to a bug introduced at ver.2.2.0
 SCALAPACK_CMAKE_OPTS = \
-	-D CMAKE_C_COMPILER=$(CC) \
+	-D CMAKE_C_COMPILER=\"$(MPICC)\" \
 	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
-	-D CMAKE_Fortran_COMPILER=$(FC) \
+	-D CMAKE_Fortran_COMPILER=\"$(MPIF90)\" \
 	-D CMAKE_Fortran_FLAGS=\"$(FCFLAGS)\" \
 	-D MPI_C_COMPILER=\"$(MPICC)\" \
 	-D MPI_Fortran_COMPILER=\"$(MPIF90)\" \
