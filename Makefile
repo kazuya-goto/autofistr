@@ -24,7 +24,7 @@ NJOBS ?= 1
 $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
 ifeq ($(MPI), OTHER)
-  MPI_BASE ?= MPICH
+  MPI_BASE ?= OTHER
   $(info MPI_BASE is $(MPI_BASE))
 endif
 $(info BLASLAPACK is $(BLASLAPACK))
@@ -383,6 +383,7 @@ else
     MPIF90 = $(FC)
     MPIEXEC =
     SCALAPACKLIB =
+    SCALAPACK = NONE
   else
     MPICC ?= mpicc
     MPICXX ?= mpicxx
@@ -473,6 +474,7 @@ ifeq ($(BLASLAPACK), MKL)
     BLASLIB = $(MKLOPT)
     LAPACKLIB = $(MKLOPT)
     SCALAPACKLIB = $(MKLOPT)
+    SCALAPACK = MKL
   else
     ifeq ("$(shell uname)", "Linux")
       MKL_LIBDIR := ${MKLROOT}/lib/intel64
@@ -497,20 +499,28 @@ ifeq ($(BLASLAPACK), MKL)
       ifneq ($(MPI), NONE)
         ifeq ($(MPI), IMPI)
           SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          SCALAPACK = MKL
         else
         ifeq ($(MPI), OPENMPI)
           SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+          SCALAPACK = MKL
         else
         ifeq ($(MPI), MPICH)
           SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          SCALAPACK = MKL
         else
           ifeq ($(MPI_BASE), MPICH)
             SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+            SCALAPACK = MKL
           else
           ifeq ($(MPI_BASE), OPENMPI)
             SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+            SCALAPACK = MKL
           else
-            $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
+            PACKAGES += $(SCALAPACK).tgz
+            PKG_DIRS += $(SCALAPACK)
+            TARGET += scalapack
+            SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
           endif
           endif
         endif
@@ -528,6 +538,7 @@ ifeq ($(BLASLAPACK), MKL)
       ifneq ($(MPI), NONE)
         ifeq ($(MPI), MPICH)
           SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
+          SCALAPACK = MKL
         else
           PACKAGES += $(SCALAPACK).tgz
           PKG_DIRS += $(SCALAPACK)
@@ -544,6 +555,7 @@ ifeq ($(BLASLAPACK), FUJITSU)
   LAPACKLIB = -SSL2BLAMP
   ifneq ($(MPI), NONE)
     SCALAPACKLIB = -SCALAPACK
+    SCALAPACK = FUJITSU
   endif
 else
 ifeq ($(BLASLAPACK), SYSTEM)
@@ -575,6 +587,7 @@ ifeq ($(BLASLAPACK), SYSTEM)
     HAVE_SCALAPACK = $(shell printf 'program test\nend program' > test.f90 && $(MPIF90) test.f90 $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
     ifeq ($(HAVE_SCALAPACK), true)
       $(info SYSTEM SCALAPACK found)
+      SCALAPACK = SYSTEM
     else
       $(info SYSTEM SCALAPACK not found; set to be downloaded from netlib)
       TARGET += scalapack
@@ -1170,7 +1183,9 @@ ifneq ($(MPI), NONE)
 endif
 
 ifeq ($(BLASLAPACK), MKL)
+ifeq ($(SCALAPACK), MKL)
   FISTR_SETUP_OPTS += --with-mkl
+endif
 endif
 
 ifeq ($(WITH_REFINER), 1)
@@ -1283,10 +1298,16 @@ endif
 
 ifeq ($(BLASLAPACK), MKL)
 FISTR_CMAKE_OPTS += \
+	-D BLA_VENDOR=\"Intel10_64lp\"
+ifeq ($(SCALAPACK), MKL)
+FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=ON \
-	-D BLA_VENDOR=\"Intel10_64lp\" \
 	-D MKL_INCLUDE_PATH=$(MKLROOT)/include \
 	-D MKL_LIBRARIES=\"$(BLASLIB)\"
+else
+FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF
+endif
 else
 FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=OFF

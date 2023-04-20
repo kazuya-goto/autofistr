@@ -22,8 +22,8 @@ COMPILER = GCC
 MPI = MPICH
 
 # when MPI==OTHER, MPI_BASE can be specified (Intel MKL requires MPI_BASE to be either MPICH or OPENMPI)
-# MPI_BASE (optional): base of MPI implementation {MPICH, OPENMPI, OTHER} (default: MPICH)
-#MPI_BASE = OPENMPI
+# MPI_BASE (optional): base of MPI implementation {MPICH, OPENMPI, OTHER} (default: OTHER)
+#MPI_BASE = MPICH
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
@@ -59,7 +59,7 @@ BLASLAPACK = OpenBLAS
 # -----------+-------------------------------
 # OpenBLAS   | Download from netlib
 # ATLAS      | Download from netlib
-# MKL        | MKL
+# MKL        | MKL or Download from netlib
 # FUJITSU    | FUJITSU
 # SYSTEM     | SYSTEM or Download from netlib
 # -------------------------------------------
