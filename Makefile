@@ -63,9 +63,15 @@ else
   #CMAKE_MINVER_MINOR := 17
   #CMAKE_MINVER_PATCH := 0
   TRILINOS  = trilinos-release-13-0-1
+  #TRILINOS  = trilinos-release-12-18-1
   CMAKE_MINVER_MAJOR := 3
   CMAKE_MINVER_MINOR := 10
   CMAKE_MINVER_PATCH := 0
+  #TRILINOS  = trilinos-release-12-14-1
+  #TRILINOS  = trilinos-release-12-12-1
+  #TRILINOS  = trilinos-release-12-10-1
+  #TRILINOS  = trilinos-release-12-8-1
+  #TRILINOS  = trilinos-release-12-6-4
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
@@ -239,8 +245,10 @@ ifeq ($(COMPILER), INTEL)
     CXXFLAGS ?= -O0 -g -traceback
     FCFLAGS ?= -O0 -g -CB -CU -traceback
   endif
-  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\..*//;')
-  $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
+  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\D.*//;')
+  IFORT_VER_MINOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version \d+\.//;s/\D.*//;')
+  IFORT_VER_PATCH = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version \d+\.\d+\.//;s/\D.*//;')
+  $(info IFORT_VER is $(IFORT_VER_MAJOR).$(IFORT_VER_MINOR).$(IFORT_VER_PATCH))
   ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
     OMPFLAGS ?= -qopenmp
   else
