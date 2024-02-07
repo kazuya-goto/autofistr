@@ -409,9 +409,9 @@ else
         endif
       endif
       ifeq ($(MPI), IMPI)
-        MPICC = mpiicc
-        MPICXX = mpiicpc
-        MPIF90 = mpiifort
+        MPICC ?= mpiicc
+        MPICXX ?= mpiicpc
+        MPIF90 ?= mpiifort
       endif
     endif
     ifeq ($(COMPILER), FUJITSU)
