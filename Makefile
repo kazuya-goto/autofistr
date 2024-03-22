@@ -223,9 +223,21 @@ ifeq ($(COMPILER), GCC)
   F90FPPFLAG ?= -cpp
 else
 ifeq ($(COMPILER), INTEL)
-  CC ?= icc
-  CXX ?= icpc
-  FC ?= ifort
+  ifeq ("$(shell which icc)", "")
+    CC ?= icx
+  else
+    CC ?= icc
+  endif
+  ifeq ("$(shell which icpc)", "")
+    CXX ?= icpx
+  else
+    CXX ?= icpc
+  endif
+  ifeq ("$(shell which ifort)", "")
+    FC ?= ifx
+  else
+    FC ?= ifort
+  endif
   # check existence of compiler commands
   ifeq ("$(shell which $(CC))", "")
     $(error $(CC) not found in PATH)
@@ -393,10 +405,6 @@ else
     SCALAPACKLIB =
     SCALAPACK = NONE
   else
-    MPICC ?= mpicc
-    MPICXX ?= mpicxx
-    MPIF90 ?= mpif90
-    MPIEXEC ?= mpiexec
     ifeq ($(COMPILER), INTEL)
       ifeq ($(MPI), OPENMPI)
         ifeq ("$(shell $(MPICC) --showme:version 2> /dev/null | grep 'icc version')", "")
@@ -409,17 +417,32 @@ else
         endif
       endif
       ifeq ($(MPI), IMPI)
-        MPICC ?= mpiicc
-        MPICXX ?= mpiicpc
-        MPIF90 ?= mpiifort
+        ifeq ("$(CC)", "icc")
+          MPICC ?= mpiicc
+        else
+          MPICC ?= mpiicx
+        endif
+        ifeq ("$(CXX)", "icpc")
+          MPICXX ?= mpiicpc
+        else
+          MPICXX ?= mpiicpx
+        endif
+        ifeq ("$(FC)", "ifort")
+          MPIF90 ?= mpiifort
+        else
+          MPIF90 ?= mpiifx
+        endif
       endif
     endif
     ifeq ($(COMPILER), FUJITSU)
-      MPICC = mpifcc
-      MPICXX = mpiFCC
-      MPIF90 = mpifrt
-      MPIEXEC = mpiexec
+      MPICC ?= mpifcc
+      MPICXX ?= mpiFCC
+      MPIF90 ?= mpifrt
     endif
+    MPICC ?= mpicc
+    MPICXX ?= mpicxx
+    MPIF90 ?= mpif90
+    MPIEXEC ?= mpiexec
   endif
 endif
 
@@ -950,10 +973,10 @@ $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 	elsif(/^CFLAGS/){s!-O3!$(CFLAGS)!; s!-DSCOTCH_PTHREAD!!;}" \
 	$(SCOTCH)/src/Make.inc/$(SCOTCH_MAKEFILE_INC) > $(SCOTCH)/src/Makefile.inc
 	(cd $(SCOTCH)/src && \
-	make -j $(NJOBS) scotch && \
-	make -j $(NJOBS) ptscotch && \
-	make esmumps && \
-	make ptesmumps && \
+	 (make -j $(NJOBS) scotch && echo make scotch done) && \
+	 (make -j $(NJOBS) ptscotch && echo make ptscotch done) && \
+	 (make esmumps && echo make esmumps done) && \
+	 (make ptesmumps && echo make ptesmumps done) && \
 	if [ ! -d $(PREFIX)/$(SCOTCH) ]; then mkdir $(PREFIX)/$(SCOTCH); fi && \
 	make prefix=$(PREFIX)/$(SCOTCH) install && \
 	cp -f ../lib/*esmumps*.a $(PREFIX)/$(SCOTCH)/lib)
