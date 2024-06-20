@@ -1067,7 +1067,7 @@ ifeq ($(metisversion), 4)
 	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
 	$(MUMPS)/Makefile.inc
 endif
-	(cd $(MUMPS) && make -j $(NJOBS) all && \
+	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
 else
@@ -1091,7 +1091,7 @@ ifeq ($(metisversion), 4)
 	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
 	$(MUMPS)/Makefile.inc
 endif
-	(cd $(MUMPS) && make -j $(NJOBS) all && \
+	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/. && \
 	cp libseq/libmpiseq.a $(PREFIX)/$(MUMPS)/lib/.)
