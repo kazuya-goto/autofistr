@@ -52,21 +52,36 @@ else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
 endif
-#SCOTCH    = scotch-v7.0.3
-SCOTCH    = scotch-v6.1.3
-MUMPS     = MUMPS_5.5.1
+
+BISON_VER_MAJOR = $(shell bison -V | perl -ne 'if(/^bison/){s/^\D*//;s/\..*//;print;}')
+$(info BISON_VER_MAJOR is $(BISON_VER_MAJOR))
+ifeq ("$(shell [ $(BISON_VER_MAJOR) -ge 3 ] && echo true)", "true")
+  SCOTCH = scotch-v7.0.4
+else
+  SCOTCH = scotch-v6.1.3
+endif
+
+MUMPS     = MUMPS_5.7.2
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
+  TRILINOS  = trilinos-release-15-1-1
+  #TRILINOS  = trilinos-release-14-4-0
+  #TRILINOS  = trilinos-release-14-2-0
+  #TRILINOS  = trilinos-release-14-0-0
+  CMAKE_MINVER_MAJOR := 3
+  CMAKE_MINVER_MINOR := 3
+  CMAKE_MINVER_PATCH := 0
+  #TRILINOS  = trilinos-release-13-4-1
   #TRILINOS  = trilinos-release-13-2-0
   #CMAKE_MINVER_MAJOR := 3
   #CMAKE_MINVER_MINOR := 17
   #CMAKE_MINVER_PATCH := 0
-  TRILINOS  = trilinos-release-13-0-1
+  #TRILINOS  = trilinos-release-13-0-1
   #TRILINOS  = trilinos-release-12-18-1
-  CMAKE_MINVER_MAJOR := 3
-  CMAKE_MINVER_MINOR := 10
-  CMAKE_MINVER_PATCH := 0
+  #CMAKE_MINVER_MAJOR := 3
+  #CMAKE_MINVER_MINOR := 10
+  #CMAKE_MINVER_PATCH := 0
   #TRILINOS  = trilinos-release-12-14-1
   #TRILINOS  = trilinos-release-12-12-1
   #TRILINOS  = trilinos-release-12-10-1
@@ -451,9 +466,9 @@ $(info MPICXX = $(MPICXX))
 $(info MPIF90 = $(MPIF90))
 $(info MPIEXEC = $(MPIEXEC))
 
-ifeq ($(MPI), OPENMPI)
-  LIBMPICXX = -lmpi_cxx
-endif
+#ifeq ($(MPI), OPENMPI)
+#  LIBMPICXX = -lmpi_cxx
+#endif
 
 CLINKER ?= $(MPICC)
 F90LINKER ?= $(MPIF90)
@@ -1005,7 +1020,7 @@ scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 ###
 
 $(MUMPS).tar.gz:
-	wget http://graal.ens-lyon.fr/MUMPS/$@
+	wget https://mumps-solver.org/$@
 
 $(MUMPS): $(MUMPS).tar.gz
 	rm -rf $@
@@ -1052,7 +1067,7 @@ ifeq ($(metisversion), 4)
 	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
 	$(MUMPS)/Makefile.inc
 endif
-	(cd $(MUMPS) && make -j $(NJOBS) && \
+	(cd $(MUMPS) && make -j $(NJOBS) all && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
 else
@@ -1076,7 +1091,7 @@ ifeq ($(metisversion), 4)
 	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
 	$(MUMPS)/Makefile.inc
 endif
-	(cd $(MUMPS) && make -j $(NJOBS) && \
+	(cd $(MUMPS) && make -j $(NJOBS) all && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/. && \
 	cp libseq/libmpiseq.a $(PREFIX)/$(MUMPS)/lib/.)
@@ -1104,7 +1119,7 @@ TRILINOS_CMAKE_OPTS = \
 	-D CMAKE_C_COMPILER=\"$(MPICC)\" \
 	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_CXX_COMPILER=\"$(MPICXX)\" \
-	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
+	-D CMAKE_CXX_FLAGS=\"$(CXXFLAGS)\" \
 	-D Trilinos_ENABLE_CXX11=ON \
 	-D Trilinos_ENABLE_Fortran:BOOL=OFF \
 	-D Trilinos_ENABLE_OpenMP:BOOL=ON \
@@ -1124,6 +1139,7 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_LAPACK=ON \
 	-D TPL_BLAS_LIBRARIES:STRING=\"$(BLASLIB)\" \
 	-D TPL_LAPACK_LIBRARIES:STRING=\"$(LAPACKLIB)\" \
+	-D CMAKE_INSTALL_LIBDIR:STRING=lib \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
 ifneq ($(MPI), NONE)
 TRILINOS_CMAKE_OPTS += \
@@ -1235,7 +1251,7 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	s!%coupler_dir%!$(PREFIX)/$(COUPLER)!; \
 	s!%mumps_dir%!$(PREFIX)/$(MUMPS)!; \
 	s!%trilinos_dir%!$(PREFIX)/$(TRILINOS)!; \
-	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake`!; \
+	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/Trilinos/TrilinosConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
 	s!%ldflags%!$(OMPFLAGS) -lm $(LIBMPICXX) $(LIBSTDCXX)!; \
