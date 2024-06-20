@@ -38,7 +38,7 @@ CMAKE_MINVER_MAJOR := 2
 CMAKE_MINVER_MINOR := 8
 CMAKE_MINVER_PATCH := 11
 
-CMAKE     = cmake-3.22.2
+CMAKE     = cmake-3.29.6
 OPENMPI   = openmpi-4.1.2
 MPICH     = mpich-4.0
 OPENBLAS  = OpenBLAS-0.3.19
@@ -70,7 +70,7 @@ else
   #TRILINOS  = trilinos-release-14-2-0
   #TRILINOS  = trilinos-release-14-0-0
   CMAKE_MINVER_MAJOR := 3
-  CMAKE_MINVER_MINOR := 3
+  CMAKE_MINVER_MINOR := 23
   CMAKE_MINVER_PATCH := 0
   #TRILINOS  = trilinos-release-13-4-1
   #TRILINOS  = trilinos-release-13-2-0
