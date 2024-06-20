@@ -39,11 +39,11 @@ CMAKE_MINVER_MINOR := 8
 CMAKE_MINVER_PATCH := 11
 
 CMAKE     = cmake-3.29.6
-OPENMPI   = openmpi-4.1.2
-MPICH     = mpich-4.0
-OPENBLAS  = OpenBLAS-0.3.19
+OPENMPI   = openmpi-5.0.3
+MPICH     = mpich-4.2.1
+OPENBLAS  = OpenBLAS-0.3.27
 ATLAS     = atlas3.10.3
-LAPACK    = lapack-3.10.0
+LAPACK    = lapack-3.12.0
 SCALAPACK = scalapack-2.2.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
