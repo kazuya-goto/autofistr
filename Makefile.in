@@ -22,8 +22,8 @@ COMPILER = GCC
 MPI = MPICH
 
 # when MPI==OTHER, MPI_BASE can be specified (Intel MKL requires MPI_BASE to be either MPICH or OPENMPI)
-# MPI_BASE (optional): base of MPI implementation {MPICH, OPENMPI, OTHER} (default: MPICH)
-#MPI_BASE = OPENMPI
+# MPI_BASE (optional): base of MPI implementation {MPICH, OPENMPI, OTHER} (default: OTHER)
+#MPI_BASE = MPICH
 
 # DOWNLOAD_MPI (optional): {true, false}
 #DOWNLOAD_MPI = true
@@ -43,6 +43,10 @@ BLASLAPACK = OpenBLAS
 # additional configure option for ATLAS
 #ATLAS_CONFIG_FLAGS = --cripple-atlas-performance
 
+# when BLASLAPACK==MKL and COMPILER==INTEL, MKLOPT can be specified
+# MKLOPT (optional): option to link with MKL
+#MKLOPT = -qmkl=cluster
+
 # when BLASLAPACK==SYSTEM, BLASLIB and LAPACKLIB can be specified
 # BLASLIB (optional): system BLAS lib (default: -lblas)
 #BLASLIB = -lblas
@@ -55,7 +59,7 @@ BLASLAPACK = OpenBLAS
 # -----------+-------------------------------
 # OpenBLAS   | Download from netlib
 # ATLAS      | Download from netlib
-# MKL        | MKL
+# MKL        | MKL or Download from netlib
 # FUJITSU    | FUJITSU
 # SYSTEM     | SYSTEM or Download from netlib
 # -------------------------------------------

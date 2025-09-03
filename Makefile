@@ -24,7 +24,7 @@ NJOBS ?= 1
 $(info COMPILER is $(COMPILER))
 $(info MPI is $(MPI))
 ifeq ($(MPI), OTHER)
-  MPI_BASE ?= MPICH
+  MPI_BASE ?= OTHER
   $(info MPI_BASE is $(MPI_BASE))
 endif
 $(info BLASLAPACK is $(BLASLAPACK))
@@ -38,29 +38,51 @@ CMAKE_MINVER_MAJOR := 2
 CMAKE_MINVER_MINOR := 8
 CMAKE_MINVER_PATCH := 11
 
-CMAKE     = cmake-3.22.2
-OPENMPI   = openmpi-4.1.2
-MPICH     = mpich-4.0
-OPENBLAS  = OpenBLAS-0.3.19
+CMAKE     = cmake-3.29.6
+OPENMPI   = openmpi-5.0.3
+MPICH     = mpich-4.2.1
+OPENBLAS  = OpenBLAS-0.3.27
 ATLAS     = atlas3.10.3
-LAPACK    = lapack-3.10.0
+LAPACK    = lapack-3.12.0
 SCALAPACK = scalapack-2.2.0
 GKLIB     = GKlib
 METIS     = METIS
 PARMETIS  = ParMETIS
-SCOTCH    = scotch-v7.0.1
-MUMPS     = MUMPS_5.5.1
+
+BISON_VER_MAJOR = $(shell bison -V | perl -ne 'if(/^bison/){s/^\D*//;s/\..*//;print;}')
+$(info BISON_VER_MAJOR is $(BISON_VER_MAJOR))
+ifeq ("$(shell [ $(BISON_VER_MAJOR) -ge 3 ] && echo true)", "true")
+  SCOTCH = scotch-v7.0.4
+else
+  SCOTCH = scotch-v6.1.3
+endif
+
+MUMPS     = MUMPS_5.7.2
 ifeq ($(COMPILER), FUJITSU)
   TRILINOS  = trilinos-release-12-6-4
 else
+  TRILINOS  = trilinos-release-15-1-1
+  #TRILINOS  = trilinos-release-14-4-0
+  #TRILINOS  = trilinos-release-14-2-0
+  #TRILINOS  = trilinos-release-14-0-0
+  CMAKE_MINVER_MAJOR := 3
+  CMAKE_MINVER_MINOR := 23
+  CMAKE_MINVER_PATCH := 0
+  #TRILINOS  = trilinos-release-13-4-1
   #TRILINOS  = trilinos-release-13-2-0
   #CMAKE_MINVER_MAJOR := 3
   #CMAKE_MINVER_MINOR := 17
   #CMAKE_MINVER_PATCH := 0
-  TRILINOS  = trilinos-release-13-0-1
-  CMAKE_MINVER_MAJOR := 3
-  CMAKE_MINVER_MINOR := 10
-  CMAKE_MINVER_PATCH := 0
+  #TRILINOS  = trilinos-release-13-0-1
+  #TRILINOS  = trilinos-release-12-18-1
+  #CMAKE_MINVER_MAJOR := 3
+  #CMAKE_MINVER_MINOR := 10
+  #CMAKE_MINVER_PATCH := 0
+  #TRILINOS  = trilinos-release-12-14-1
+  #TRILINOS  = trilinos-release-12-12-1
+  #TRILINOS  = trilinos-release-12-10-1
+  #TRILINOS  = trilinos-release-12-8-1
+  #TRILINOS  = trilinos-release-12-6-4
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
 FISTR     = FrontISTR
@@ -212,9 +234,21 @@ ifeq ($(COMPILER), GCC)
   F90FPPFLAG ?= -cpp
 else
 ifeq ($(COMPILER), INTEL)
-  CC ?= icc
-  CXX ?= icpc
-  FC ?= ifort
+  ifeq ("$(shell which icc)", "")
+    CC ?= icx
+  else
+    CC ?= icc
+  endif
+  ifeq ("$(shell which icpc)", "")
+    CXX ?= icpx
+  else
+    CXX ?= icpc
+  endif
+  ifeq ("$(shell which ifort)", "")
+    FC ?= ifx
+  else
+    FC ?= ifort
+  endif
   # check existence of compiler commands
   ifeq ("$(shell which $(CC))", "")
     $(error $(CC) not found in PATH)
@@ -234,8 +268,10 @@ ifeq ($(COMPILER), INTEL)
     CXXFLAGS ?= -O0 -g -traceback
     FCFLAGS ?= -O0 -g -CB -CU -traceback
   endif
-  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\..*//;')
-  $(info IFORT_VER_MAJOR is $(IFORT_VER_MAJOR))
+  IFORT_VER_MAJOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version //;s/\D.*//;')
+  IFORT_VER_MINOR = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version \d+\.//;s/\D.*//;')
+  IFORT_VER_PATCH = $(shell LANG=C ifort -v 2>&1 | perl -pe 's/ifort version \d+\.\d+\.//;s/\D.*//;')
+  $(info IFORT_VER is $(IFORT_VER_MAJOR).$(IFORT_VER_MINOR).$(IFORT_VER_PATCH))
   ifeq ("$(shell [ $(IFORT_VER_MAJOR) -ge 15 ] && echo true)", "true")
     OMPFLAGS ?= -qopenmp
   else
@@ -378,11 +414,8 @@ else
     MPIF90 = $(FC)
     MPIEXEC =
     SCALAPACKLIB =
+    SCALAPACK = NONE
   else
-    MPICC ?= mpicc
-    MPICXX ?= mpicxx
-    MPIF90 ?= mpif90
-    MPIEXEC ?= mpiexec
     ifeq ($(COMPILER), INTEL)
       ifeq ($(MPI), OPENMPI)
         ifeq ("$(shell $(MPICC) --showme:version 2> /dev/null | grep 'icc version')", "")
@@ -395,17 +428,32 @@ else
         endif
       endif
       ifeq ($(MPI), IMPI)
-        MPICC = mpiicc
-        MPICXX = mpiicpc
-        MPIF90 = mpiifort
+        ifeq ("$(CC)", "icc")
+          MPICC ?= mpiicc
+        else
+          MPICC ?= mpiicx
+        endif
+        ifeq ("$(CXX)", "icpc")
+          MPICXX ?= mpiicpc
+        else
+          MPICXX ?= mpiicpx
+        endif
+        ifeq ("$(FC)", "ifort")
+          MPIF90 ?= mpiifort
+        else
+          MPIF90 ?= mpiifx
+        endif
       endif
     endif
     ifeq ($(COMPILER), FUJITSU)
-      MPICC = mpifcc
-      MPICXX = mpiFCC
-      MPIF90 = mpifrt
-      MPIEXEC = mpiexec
+      MPICC ?= mpifcc
+      MPICXX ?= mpiFCC
+      MPIF90 ?= mpifrt
     endif
+    MPICC ?= mpicc
+    MPICXX ?= mpicxx
+    MPIF90 ?= mpif90
+    MPIEXEC ?= mpiexec
   endif
 endif
 
@@ -414,9 +462,9 @@ $(info MPICXX = $(MPICXX))
 $(info MPIF90 = $(MPIF90))
 $(info MPIEXEC = $(MPIEXEC))
 
-ifeq ($(MPI), OPENMPI)
-  LIBMPICXX = -lmpi_cxx
-endif
+#ifeq ($(MPI), OPENMPI)
+#  LIBMPICXX = -lmpi_cxx
+#endif
 
 CLINKER ?= $(MPICC)
 F90LINKER ?= $(MPIF90)
@@ -460,67 +508,88 @@ ifeq ($(BLASLAPACK), MKL)
   ifeq ("$(MKLROOT)", "")
     $(error MKLROOT not set; please make sure the environment variables are correctly set)
   endif
-  # BLAS
-  ifeq ("$(shell uname)", "Linux")
-    MKL_LIBDIR := ${MKLROOT}/lib/intel64
-    ifeq ($(COMPILER), INTEL)
-      BLASLIB = -Wl,--start-group \
-        ${MKL_LIBDIR}/libmkl_intel_lp64.a \
-        ${MKL_LIBDIR}/libmkl_intel_thread.a \
-        ${MKL_LIBDIR}/libmkl_core.a \
-        -Wl,--end-group -liomp5
+  MKLOPT ?= NONE
+  ifneq ($(MKLOPT), NONE)
+    ifneq ($(COMPILER), INTEL)
+      $(error MKLOPT can be specified only when COMPILER==INTEL)
     endif
-    ifeq ($(COMPILER), GCC)
-      BLASLIB = -Wl,--start-group \
-        ${MKL_LIBDIR}/libmkl_gf_lp64.a \
-        ${MKL_LIBDIR}/libmkl_gnu_thread.a \
-        ${MKL_LIBDIR}/libmkl_core.a \
-        -Wl,--end-group -lgomp -ldl
-    endif
-    # LAPACK
-    LAPACKLIB = $(BLASLIB)
-    # ScaLAPACK
-    ifneq ($(MPI), NONE)
-      ifeq ($(MPI), IMPI)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-      else
-      ifeq ($(MPI), OPENMPI)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-      else
-      ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-      else
-        ifeq ($(MPI_BASE), MPICH)
-          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-        else
-        ifeq ($(MPI_BASE), OPENMPI)
-          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
-        else
-          $(error MPI_BASE not supported by Intel MKL: MPI_BASE = $(MPI_BASE))
-        endif
-        endif
-      endif
-      endif
-      endif
-    endif
+    BLASLIB = $(MKLOPT)
+    LAPACKLIB = $(MKLOPT)
+    SCALAPACKLIB = $(MKLOPT)
+    SCALAPACK = MKL
   else
-  ifeq ("$(shell uname)", "Darwin")
-    MKL_LIBDIR := ${MKLROOT}/lib
-    BLASLIB = -L${MKL_LIBDIR} -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
-    # LAPACK
-    LAPACKLIB = $(BLASLIB)
-    # ScaLAPACK
-    ifneq ($(MPI), NONE)
-      ifeq ($(MPI), MPICH)
-        SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
-      else
-        PACKAGES += $(SCALAPACK).tgz
-        PKG_DIRS += $(SCALAPACK)
-        TARGET += scalapack
-        SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+    ifeq ("$(shell uname)", "Linux")
+      MKL_LIBDIR := ${MKLROOT}/lib/intel64
+      # BLAS
+      ifeq ($(COMPILER), INTEL)
+        BLASLIB = -Wl,--start-group \
+          ${MKL_LIBDIR}/libmkl_intel_lp64.a \
+          ${MKL_LIBDIR}/libmkl_intel_thread.a \
+          ${MKL_LIBDIR}/libmkl_core.a \
+          -Wl,--end-group -liomp5
+      endif
+      ifeq ($(COMPILER), GCC)
+        BLASLIB = -Wl,--start-group \
+          ${MKL_LIBDIR}/libmkl_gf_lp64.a \
+          ${MKL_LIBDIR}/libmkl_gnu_thread.a \
+          ${MKL_LIBDIR}/libmkl_core.a \
+          -Wl,--end-group -lgomp -ldl
+      endif
+      # LAPACK
+      LAPACKLIB = $(BLASLIB)
+      # ScaLAPACK
+      ifneq ($(MPI), NONE)
+        ifeq ($(MPI), IMPI)
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          SCALAPACK = MKL
+        else
+        ifeq ($(MPI), OPENMPI)
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+          SCALAPACK = MKL
+        else
+        ifeq ($(MPI), MPICH)
+          SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+          SCALAPACK = MKL
+        else
+          ifeq ($(MPI_BASE), MPICH)
+            SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
+            SCALAPACK = MKL
+          else
+          ifeq ($(MPI_BASE), OPENMPI)
+            SCALAPACKLIB = -L${MKL_LIBDIR} -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64
+            SCALAPACK = MKL
+          else
+            PACKAGES += $(SCALAPACK).tgz
+            PKG_DIRS += $(SCALAPACK)
+            TARGET += scalapack
+            SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+          endif
+          endif
+        endif
+        endif
+        endif
+      endif
+    else
+    ifeq ("$(shell uname)", "Darwin")
+      MKL_LIBDIR := ${MKLROOT}/lib
+      # BLAS
+      BLASLIB = -L${MKL_LIBDIR} -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
+      # LAPACK
+      LAPACKLIB = $(BLASLIB)
+      # ScaLAPACK
+      ifneq ($(MPI), NONE)
+        ifeq ($(MPI), MPICH)
+          SCALAPACKLIB = -lmkl_scalapack_lp64 -lmkl_blacs_mpich_lp64
+          SCALAPACK = MKL
+        else
+          PACKAGES += $(SCALAPACK).tgz
+          PKG_DIRS += $(SCALAPACK)
+          TARGET += scalapack
+          SCALAPACKLIB = -L$(PREFIX)/$(SCALAPACK)/lib -lscalapack
+        endif
       endif
     endif
-  endif
+    endif
   endif
 else
 ifeq ($(BLASLAPACK), FUJITSU)
@@ -528,6 +597,7 @@ ifeq ($(BLASLAPACK), FUJITSU)
   LAPACKLIB = -SSL2BLAMP
   ifneq ($(MPI), NONE)
     SCALAPACKLIB = -SCALAPACK
+    SCALAPACK = FUJITSU
   endif
 else
 ifeq ($(BLASLAPACK), SYSTEM)
@@ -559,6 +629,7 @@ ifeq ($(BLASLAPACK), SYSTEM)
     HAVE_SCALAPACK = $(shell printf 'program test\nend program' > test.f90 && $(MPIF90) test.f90 $(SCALAPACKLIB) > /dev/null 2>&1 && echo true)
     ifeq ($(HAVE_SCALAPACK), true)
       $(info SYSTEM SCALAPACK found)
+      SCALAPACK = SYSTEM
     else
       $(info SYSTEM SCALAPACK not found; set to be downloaded from netlib)
       TARGET += scalapack
@@ -796,10 +867,11 @@ $(SCALAPACK): $(SCALAPACK).tgz
 	tar zxvf $(SCALAPACK).tgz
 	touch $@
 
+# provide MPICC and MPIF90 in place of CC and FC due to a bug introduced at ver.2.2.0
 SCALAPACK_CMAKE_OPTS = \
-	-D CMAKE_C_COMPILER=$(CC) \
+	-D CMAKE_C_COMPILER=\"$(MPICC)\" \
 	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
-	-D CMAKE_Fortran_COMPILER=$(FC) \
+	-D CMAKE_Fortran_COMPILER=\"$(MPIF90)\" \
 	-D CMAKE_Fortran_FLAGS=\"$(FCFLAGS)\" \
 	-D MPI_C_COMPILER=\"$(MPICC)\" \
 	-D MPI_Fortran_COMPILER=\"$(MPIF90)\" \
@@ -882,6 +954,7 @@ $(SCOTCH).tar.gz:
 $(SCOTCH): $(SCOTCH).tar.gz
 	rm -rf $@
 	tar zxvf $<
+	if [ -e $(SCOTCH).patch ]; then (cd $(SCOTCH); patch -p 1 < ../$(SCOTCH).patch); fi
 	touch $@
 
 ifneq ($(MPI), NONE)
@@ -893,10 +966,10 @@ $(PREFIX)/$(SCOTCH)/lib/libscotch.a: $(SCOTCH) $(MPI_INST)
 	elsif(/^CFLAGS/){s!-O3!$(CFLAGS)!; s!-DSCOTCH_PTHREAD!!;}" \
 	$(SCOTCH)/src/Make.inc/$(SCOTCH_MAKEFILE_INC) > $(SCOTCH)/src/Makefile.inc
 	(cd $(SCOTCH)/src && \
-	make -j $(NJOBS) scotch && \
-	make -j $(NJOBS) ptscotch && \
-	make esmumps && \
-	make ptesmumps && \
+	 (make -j $(NJOBS) scotch && echo make scotch done) && \
+	 (make -j $(NJOBS) ptscotch && echo make ptscotch done) && \
+	 (make esmumps && echo make esmumps done) && \
+	 (make ptesmumps && echo make ptesmumps done) && \
 	if [ ! -d $(PREFIX)/$(SCOTCH) ]; then mkdir $(PREFIX)/$(SCOTCH); fi && \
 	make prefix=$(PREFIX)/$(SCOTCH) install && \
 	cp -f ../lib/*esmumps*.a $(PREFIX)/$(SCOTCH)/lib)
@@ -925,7 +998,7 @@ scotch: $(PREFIX)/$(SCOTCH)/lib/libscotch.a
 ###
 
 $(MUMPS).tar.gz:
-	wget http://graal.ens-lyon.fr/MUMPS/$@
+	wget https://mumps-solver.org/$@
 
 $(MUMPS): $(MUMPS).tar.gz
 	rm -rf $@
@@ -1010,7 +1083,7 @@ TRILINOS_CMAKE_OPTS = \
 	-D CMAKE_C_COMPILER=\"$(MPICC)\" \
 	-D CMAKE_C_FLAGS=\"$(CFLAGS)\" \
 	-D CMAKE_CXX_COMPILER=\"$(MPICXX)\" \
-	-D CMAKE_CXX_FLAGS=\"$(CFLAGS)\" \
+	-D CMAKE_CXX_FLAGS=\"$(CXXFLAGS)\" \
 	-D Trilinos_ENABLE_CXX11=ON \
 	-D Trilinos_ENABLE_Fortran:BOOL=OFF \
 	-D Trilinos_ENABLE_OpenMP:BOOL=ON \
@@ -1030,6 +1103,7 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_LAPACK=ON \
 	-D TPL_BLAS_LIBRARIES:STRING=\"$(BLASLIB)\" \
 	-D TPL_LAPACK_LIBRARIES:STRING=\"$(LAPACKLIB)\" \
+	-D CMAKE_INSTALL_LIBDIR:STRING=lib \
 	-D CMAKE_INSTALL_PREFIX=$(PREFIX)/$(TRILINOS)
 ifneq ($(MPI), NONE)
 TRILINOS_CMAKE_OPTS += \
@@ -1120,7 +1194,9 @@ ifneq ($(MPI), NONE)
 endif
 
 ifeq ($(BLASLAPACK), MKL)
+ifeq ($(SCALAPACK), MKL)
   FISTR_SETUP_OPTS += --with-mkl
+endif
 endif
 
 ifeq ($(WITH_REFINER), 1)
@@ -1139,7 +1215,7 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 	s!%coupler_dir%!$(PREFIX)/$(COUPLER)!; \
 	s!%mumps_dir%!$(PREFIX)/$(MUMPS)!; \
 	s!%trilinos_dir%!$(PREFIX)/$(TRILINOS)!; \
-	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/ML/MLConfig.cmake`!; \
+	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/Trilinos/TrilinosConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
 	s!%cflags%!$(OMPFLAGS)!; \
 	s!%ldflags%!$(OMPFLAGS) -L$(PREFIX)/$(PARMETIS)/lib -lGKlib -lm $(LIBMPICXX) $(LIBSTDCXX)!; \
@@ -1228,10 +1304,16 @@ endif
 
 ifeq ($(BLASLAPACK), MKL)
 FISTR_CMAKE_OPTS += \
+	-D BLA_VENDOR=\"Intel10_64lp\"
+ifeq ($(SCALAPACK), MKL)
+FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=ON \
-	-D BLA_VENDOR=\"Intel10_64lp\" \
 	-D MKL_INCLUDE_PATH=$(MKLROOT)/include \
 	-D MKL_LIBRARIES=\"$(BLASLIB)\"
+else
+FISTR_CMAKE_OPTS += \
+	-D WITH_MKL=OFF
+endif
 else
 FISTR_CMAKE_OPTS += \
 	-D WITH_MKL=OFF
