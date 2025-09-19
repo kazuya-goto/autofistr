@@ -47,7 +47,7 @@ LAPACK    = lapack-3.12.0
 SCALAPACK = scalapack-2.2.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
-  PARMETIS  = ParMetis-3.2.0
+  PARMETIS  = ParMetis-3.2.0-p1
 else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
@@ -903,9 +903,9 @@ scalapack: $(PREFIX)/$(SCALAPACK)/lib/libscalapack.a
 
 $(METIS).tar.gz:
 ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/OLD/$@
+	wget https://github.com/mfem/tpls/raw/gh-pages/$@
 else
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/$@
+	wget https://karypis.github.io/glaros/files/sw/metis/$@
 endif
 
 $(METIS): $(METIS).tar.gz
@@ -931,9 +931,9 @@ metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 
 $(PARMETIS).tar.gz:
 ifeq ($(metisversion), 4)
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/OLD/$@
+	wget https://ftp.mcs.anl.gov/pub/petsc/externalpackages/$@
 else
-	wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/$@
+	wget https://karypis.github.io/glaros/files/sw/parmetis/$@
 endif
 
 $(PARMETIS): $(PARMETIS).tar.gz
