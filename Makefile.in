@@ -67,6 +67,9 @@ BLASLAPACK = OpenBLAS
 # SCALAPACKLIB (optional): system SCALAPACK lib (default: -lscalapack)
 #SCALAPACKLIB := -lscalapack-openmpi
 
+# WITH_SCOTCH (optional): {YES, NO} (default: YES)
+#WITH_SCOTCH = NO
+
 # NJOBS (optional): number of parallel make jobs (default: 1)
 NJOBS = 4
 

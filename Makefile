@@ -16,6 +16,7 @@ TOPDIR = $(CURDIR)
 
 BUILD_TYPE ?= RELEASE
 NJOBS ?= 1
+WITH_SCOTCH ?= YES
 
 ###
 ### Echo basic settings
@@ -34,9 +35,43 @@ $(info BLASLAPACK is $(BLASLAPACK))
 ### Package versions
 ###
 
-CMAKE_MINVER_MAJOR := 2
-CMAKE_MINVER_MINOR := 8
-CMAKE_MINVER_PATCH := 11
+FISTR = FrontISTR
+
+ifeq ("$(shell [ -d $(FISTR) ] && echo true)", "true")
+  FISTR_VER_MAJOR = $(shell cat FrontISTR/VERSION | perl -pe 's/^Version //;s/\D.*//;')
+  FISTR_VER_MINOR = $(shell cat FrontISTR/VERSION | perl -pe 's/^Version \d\.//;s/\D.*//;')
+  FISTR_VER_PATCH = $(shell cat FrontISTR/VERSION | perl -pe 's/^Version \d\.\d\.*//;s/\D.*//;')
+  $(info FrontISTR version is $(FISTR_VER_MAJOR).$(FISTR_VER_MINOR).$(FISTR_VER_PATCH))
+  ifeq ("$(shell [ $(FISTR_VER_MAJOR) -eq 5 ] && echo true)", "true")
+    ifeq ("$(shell [ $(FISTR_VER_MINOR) -eq 7 ] && echo true)", "true")
+      ifeq ("$(shell [ $(FISTR_VER_PATCH) -ge 1 ] && echo true)", "true")
+        CMAKE_MINVER_MAJOR := 3
+        CMAKE_MINVER_MINOR := 13
+        CMAKE_MINVER_PATCH := 4
+      else
+        CMAKE_MINVER_MAJOR := 2
+        CMAKE_MINVER_MINOR := 8
+        CMAKE_MINVER_PATCH := 11
+      endif
+    else
+      ifeq ("$(shell [ $(FISTR_VER_MINOR) -gt 7 ] && echo true)", "true")
+        CMAKE_MINVER_MAJOR := 3
+        CMAKE_MINVER_MINOR := 13
+        CMAKE_MINVER_PATCH := 4
+      else
+        CMAKE_MINVER_MAJOR := 2
+        CMAKE_MINVER_MINOR := 8
+        CMAKE_MINVER_PATCH := 11
+      endif
+    endif
+  else
+    fistrbuild = old
+  endif
+else
+  CMAKE_MINVER_MAJOR := 3
+  CMAKE_MINVER_MINOR := 13
+  CMAKE_MINVER_PATCH := 4
+endif
 
 CMAKE     = cmake-3.29.6
 OPENMPI   = openmpi-5.0.3
@@ -53,12 +88,14 @@ else
   PARMETIS  = parmetis-4.0.3
 endif
 
+ifeq ($(WITH_SCOTCH), YES)
 BISON_VER_MAJOR = $(shell bison -V | perl -ne 'if(/^bison/){s/^\D*//;s/\..*//;print;}')
 $(info BISON_VER_MAJOR is $(BISON_VER_MAJOR))
 ifeq ("$(shell [ $(BISON_VER_MAJOR) -ge 3 ] && echo true)", "true")
   SCOTCH = scotch-v7.0.4
 else
   SCOTCH = scotch-v6.1.3
+endif
 endif
 
 MUMPS     = MUMPS_5.7.2
@@ -89,7 +126,6 @@ else
   #TRILINOS  = trilinos-release-12-6-4
 endif
 REFINER   = REVOCAP_Refiner-1.1.04
-FISTR     = FrontISTR
 
 
 PACKAGES =
@@ -466,9 +502,9 @@ $(info MPICXX = $(MPICXX))
 $(info MPIF90 = $(MPIF90))
 $(info MPIEXEC = $(MPIEXEC))
 
-#ifeq ($(MPI), OPENMPI)
-#  LIBMPICXX = -lmpi_cxx
-#endif
+ifeq ($(MPI), OPENMPI)
+  LIBMPICXX = -lmpi_cxx
+endif
 
 CLINKER ?= $(MPICC)
 F90LINKER ?= $(MPIF90)
@@ -649,26 +685,7 @@ endif
 endif
 
 ###
-### Scotch settings
-###
-
-ifeq ("$(shell uname)", "Linux")
-  SCOTCH_MAKEFILE_INC := Makefile.inc.x86-64_pc_linux2
-else
-ifeq ("$(shell uname)", "Darwin")
-  SCOTCH_MAKEFILE_INC := Makefile.inc.i686_mac_darwin10
-endif
-endif
-
-ifeq ($(COMPILER), INTEL)
-  SCOTCH_MAKEFILE_INC := $(SCOTCH_MAKEFILE_INC).icc
-  ifeq ($(MPI), IMPI)
-    SCOTCH_MAKEFILE_INC := $(SCOTCH_MAKEFILE_INC).impi
-  endif
-endif
-
-###
-### External packages and targets
+### Metis and ParMetis settings
 ###
 
 ifneq ($(metisversion), 4)
@@ -683,9 +700,79 @@ ifneq ($(MPI), NONE)
   TARGET += parmetis
 endif
 
-PACKAGES += $(SCOTCH).tar.gz $(MUMPS).tar.gz $(TRILINOS).tar.gz
-PKG_DIRS += $(SCOTCH) $(MUMPS) Trilinos-$(TRILINOS)
-TARGET += scotch mumps trilinos
+###
+### Scotch settings
+###
+
+ifeq ($(WITH_SCOTCH), YES)
+ifeq ("$(shell uname)", "Linux")
+  SCOTCH_MAKEFILE_INC := Makefile.inc.x86-64_pc_linux2
+else
+ifeq ("$(shell uname)", "Darwin")
+  SCOTCH_MAKEFILE_INC := Makefile.inc.i686_mac_darwin10
+endif
+endif
+
+ifeq ($(COMPILER), INTEL)
+  SCOTCH_MAKEFILE_INC := $(SCOTCH_MAKEFILE_INC).icc
+  ifeq ($(MPI), IMPI)
+    SCOTCH_MAKEFILE_INC := $(SCOTCH_MAKEFILE_INC).impi
+  endif
+endif
+endif
+
+ifeq ($(WITH_SCOTCH), YES)
+  PACKAGES += $(SCOTCH).tar.gz
+  PKG_DIRS += $(SCOTCH)
+  TARGET += scotch
+endif
+
+###
+### MUMPS settings
+###
+
+MUMPS_DEPS = metis
+ifeq ($(WITH_SCOTCH), YES)
+  MUMPS_DEPS += scotch
+endif
+ifneq ($(MPI), NONE)
+  MUMPS_DEPS += $(MPI_INST) parmetis
+  ifeq ($(BLASLAPACK), OpenBLAS)
+    MUMPS_DEPS += scalapack
+  endif
+  ifeq ($(BLASLAPACK), ATLAS)
+    MUMPS_DEPS += scalapack
+  endif
+  ifeq ($(BLASLAPACK), SYSTEM)
+    ifneq ($(HAVE_SCALAPACK), true)
+      MUMPS_DEPS += scalapack
+    endif
+  endif
+endif
+
+PACKAGES += $(MUMPS).tar.gz
+PKG_DIRS += $(MUMPS)
+TARGET += mumps
+
+###
+### Trilinos settings
+###
+
+TRILINOS_DEPS = metis mumps
+ifeq ($(WITH_SCOTCH), YES)
+  TRILINOS_DEPS += scotch
+endif
+ifneq ($(MPI), NONE)
+  TRILINOS_DEPS += $(MPI_INST) parmetis
+endif
+
+PACKAGES += $(TRILINOS).tar.gz
+PKG_DIRS += Trilinos-$(TRILINOS)
+TARGET += trilinos
+
+###
+### Refiner settings
+###
 
 ifeq ("$(shell [ -f $(REFINER).tar.gz ] && echo true)", "true")
   WITH_REFINER = 1
@@ -703,7 +790,15 @@ else
   WITH_REFINER = 0
 endif
 
+###
+### FrontISTR settings
+###
+
+FISTR_DEPS = metis mumps trilinos
+
 TARGET += frontistr
+
+
 
 $(info TARGET is $(TARGET))
 
@@ -1027,27 +1122,13 @@ $(MUMPS): $(MUMPS).tar.gz
 	tar zxvf $<
 	touch $@
 
-MUMPS_DEPS = $(MUMPS) metis scotch
 ifneq ($(MPI), NONE)
-  MUMPS_DEPS += $(MPI_INST) parmetis
+  MUMPS_MAKEFILE_INC = MUMPS_Makefile.inc
+else
+  MUMPS_MAKEFILE_INC = MUMPS_Makefile.inc.seq
 endif
 
-ifneq ($(MPI), NONE)
-  ifeq ($(BLASLAPACK), OpenBLAS)
-    MUMPS_DEPS += scalapack
-  endif
-  ifeq ($(BLASLAPACK), ATLAS)
-    MUMPS_DEPS += scalapack
-  endif
-  ifeq ($(BLASLAPACK), SYSTEM)
-    ifneq ($(HAVE_SCALAPACK), true)
-      MUMPS_DEPS += scalapack
-    endif
-  endif
-endif
-
-ifneq ($(MPI), NONE)
-$(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
+$(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS) $(MUMPS_DEPS)
 	perl -pe \
 	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
 	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
@@ -1059,42 +1140,27 @@ $(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
 	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
 	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
 	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
-	MUMPS_Makefile.inc > $(MUMPS)/Makefile.inc  ### to be fixed
+	$(MUMPS_MAKEFILE_INC) > $(MUMPS)/Makefile.inc  ### to be fixed
 ifeq ($(metisversion), 4)
 	perl -i -pe \
 	"s!Dmetis!Dmetis4!; \
 	s!Dparmetis!Dparmetis3!; \
 	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
+	$(MUMPS)/Makefile.inc
+endif
+ifneq ($(WITH_SCOTCH), YES)
+	perl -i -pe \
+	"s!-Dscotch!!; \
+	s!-Dptscotch!!; \
+	if(/^ISCOTCH/){s#=.*#=#;} \
+	if(/^LSCOTCH/){s#=.*#=#;}" \
 	$(MUMPS)/Makefile.inc
 endif
 	(cd $(MUMPS) && make -j $(NJOBS) && \
 	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
 	cp -r lib include $(PREFIX)/$(MUMPS)/.)
-else
-$(PREFIX)/$(MUMPS)/lib/libdmumps.a: $(MUMPS_DEPS)
-	perl -pe \
-	"s!%scotch_dir%!$(PREFIX)/$(SCOTCH)!; \
-	s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
-	s!%mpicc%!$(MPICC)!; \
-	s!%mpif90%!$(MPIF90)!; \
-	s!%lapack_libs%!$(LAPACKLIB)!; \
-	s!%scalapack_libs%!$(SCALAPACKLIB)!; \
-	s!%blas_libs%!$(BLASLIB)!; \
-	s!%fcflags%!$(FCFLAGS) $(NOFOR_MAIN) $(OMPFLAGS)!; \
-	s!%ldflags%!$(FCFLAGS) $(NOFOR_MAIN_LD) $(OMPFLAGS)!; \
-	s!%cflags%!$(CFLAGS) $(NOFOR_MAIN_C) $(OMPFLAGS)!;" \
-	MUMPS_Makefile.inc.seq > $(MUMPS)/Makefile.inc  ### to be fixed
-ifeq ($(metisversion), 4)
-	perl -i -pe \
-	"s!Dmetis!Dmetis4!; \
-	s!Dparmetis!Dparmetis3!; \
-	if(/^IMETIS/){s!include!include -I$(PREFIX)/$(PARMETIS)/include/METISLib!;}" \
-	$(MUMPS)/Makefile.inc
-endif
-	(cd $(MUMPS) && make -j $(NJOBS) && \
-	if [ ! -d $(PREFIX)/$(MUMPS) ]; then mkdir $(PREFIX)/$(MUMPS); fi && \
-	cp -r lib include $(PREFIX)/$(MUMPS)/. && \
-	cp libseq/libmpiseq.a $(PREFIX)/$(MUMPS)/lib/.)
+ifeq ($(MPI), NONE)
+	cp $(MUMPS)/libseq/libmpiseq.a $(PREFIX)/$(MUMPS)/lib/.
 endif
 
 mumps: $(PREFIX)/$(MUMPS)/lib/libdmumps.a
@@ -1132,9 +1198,6 @@ TRILINOS_CMAKE_OPTS = \
 	-D TPL_ENABLE_METIS=ON \
 	-D METIS_INCLUDE_DIRS=$(PREFIX)/$(PARMETIS)/include \
 	-D METIS_LIBRARY_DIRS=$(PREFIX)/$(PARMETIS)/lib \
-	-D TPL_ENABLE_Scotch=ON \
-	-D Scotch_INCLUDE_DIRS=$(PREFIX)/$(SCOTCH)/include \
-	-D Scotch_LIBRARY_DIRS=$(PREFIX)/$(SCOTCH)/lib \
 	-D TPL_ENABLE_BLAS=ON \
 	-D TPL_ENABLE_LAPACK=ON \
 	-D TPL_BLAS_LIBRARIES:STRING=\"$(BLASLIB)\" \
@@ -1153,13 +1216,14 @@ TRILINOS_CMAKE_OPTS += \
 	-D MUMPS_INCLUDE_DIRS=$(PREFIX)/$(MUMPS)/include \
 	-D MUMPS_LIBRARY_DIRS=$(PREFIX)/$(MUMPS)/lib
 endif
-
-TRILINOS_DEPS = Trilinos-$(TRILINOS) metis scotch mumps
-ifneq ($(MPI), NONE)
-  TRILINOS_DEPS += $(MPI_INST) parmetis
+ifeq ($(WITH_SCOTCH), YES)
+TRILINOS_CMAKE_OPTS += \
+	-D TPL_ENABLE_Scotch=ON \
+	-D Scotch_INCLUDE_DIRS=$(PREFIX)/$(SCOTCH)/include \
+	-D Scotch_LIBRARY_DIRS=$(PREFIX)/$(SCOTCH)/lib
 endif
 
-$(PREFIX)/$(TRILINOS)/lib/libml.a: $(TRILINOS_DEPS)
+$(PREFIX)/$(TRILINOS)/lib/libml.a: Trilinos-$(TRILINOS) $(TRILINOS_DEPS)
 	(cd Trilinos-$(TRILINOS); mkdir build; cd build; \
 	echo "cmake $(TRILINOS_CMAKE_OPTS) .." > run_cmake.sh; \
 	sh run_cmake.sh; \
@@ -1209,17 +1273,6 @@ $(FISTR):
 		git clone https://gitlab.com/FrontISTR-Commons/FrontISTR.git $(FISTR); \
 	fi
 
-ifneq ($(MPI), NONE)
-  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
-else
-  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lesmumps -lscotch -lscotcherr
-endif
-
-F90LDFLAGS := $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBMPICXX) $(LIBSTDCXX)
-ifeq ($(MPI), NONE)
-  F90LDFLAGS := -L$(PREFIX)/$(MUMPS)/lib -lmpiseq $(F90LDFLAGS)
-endif
-
 ifeq ($(fistrbuild), old)
 #
 # Old style build with setup.sh
@@ -1239,17 +1292,27 @@ ifeq ($(WITH_REFINER), 1)
   FISTR_SETUP_OPTS += --with-refiner
 endif
 
-FISTR_DEPS = $(FISTR) metis mumps trilinos
+ifeq ($(WITH_SCOTCH), YES)
 ifneq ($(MPI), NONE)
-  FISTR_DEPS += parmetis
+  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lptesmumps -lptscotch -lscotch -lptscotcherr
+else
+  SCOTCH_LIBS = -L$(PREFIX)/$(SCOTCH)/lib -lesmumps -lscotch -lscotcherr
+endif
 endif
 
-$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
+F90LDFLAGS := $(SCOTCH_LIBS) $(SCALAPACKLIB) $(LAPACKLIB) $(BLASLIB) $(OMPFLAGS) $(LIBMPICXX) $(LIBSTDCXX)
+ifeq ($(MPI), NONE)
+  F90LDFLAGS := -L$(PREFIX)/$(MUMPS)/lib -lmpiseq $(F90LDFLAGS)
+endif
+
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) $(FISTR_DEPS)
 	perl -pe \
 	"s!%metis_dir%!$(PREFIX)/$(PARMETIS)!; \
 	s!%refiner_dir%!$(PREFIX)/$(REFINER)!; \
 	s!%coupler_dir%!$(PREFIX)/$(COUPLER)!; \
 	s!%mumps_dir%!$(PREFIX)/$(MUMPS)!; \
+	s!%mkl_dir%!$(MKLROOT)!; \
+	s!%mkl_libdir%!$(MKL_LIBDIR)!; \
 	s!%trilinos_dir%!$(PREFIX)/$(TRILINOS)!; \
 	s!%ml_libs%!`perl get_ml_libs.pl $(PREFIX)/$(TRILINOS)/lib/cmake/Trilinos/TrilinosConfig.cmake`!; \
 	s!%mpicc%!$(MPICC)!; \
@@ -1268,12 +1331,6 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
 ifeq ($(metisversion), 4)
 	perl -i -pe \
 	"if(/^METISINCDIR/){s!include!include/METISLib!;}" \
-	$(FISTR)/Makefile.conf
-endif
-ifeq ($(BLASLAPACK), MKL)
-	perl -i -pe \
-	"s!%mkl_dir%!$(MKLROOT)!; \
-	s!%mkl_libdir%!$(MKL_LIBDIR)!;" \
 	$(FISTR)/Makefile.conf
 endif
 	(cd $(FISTR) && \
@@ -1327,14 +1384,26 @@ FISTR_CMAKE_OPTS += \
 	-D PARMETIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libparmetis.a \
 	-D WITH_MUMPS=1 \
 	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
-	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\" \
 	-D SCALAPACK_LIBRARIES=\"$(SCALAPACKLIB)\"
+ifeq ($(WITH_SCOTCH), YES)
+FISTR_CMAKE_OPTS += \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(SCOTCH)/lib/libptesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libptscotch.a;$(PREFIX)/$(SCOTCH)/lib/libptscotcherr.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a\"
+else
+FISTR_CMAKE_OPTS += \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a\"
+endif
 else
 FISTR_CMAKE_OPTS += \
 	-D WITH_MPI=OFF \
 	-D WITH_MUMPS=1 \
-	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include \
+	-D MUMPS_INCLUDE_PATH=$(PREFIX)/$(MUMPS)/include
+ifeq ($(WITH_SCOTCH), YES)
+FISTR_CMAKE_OPTS += \
 	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(MUMPS)/lib/libmpiseq.a;$(PREFIX)/$(SCOTCH)/lib/libesmumps.a;$(PREFIX)/$(SCOTCH)/lib/libscotch.a;$(PREFIX)/$(SCOTCH)/lib/libscotcherr.a\"
+else
+FISTR_CMAKE_OPTS += \
+	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a;$(PREFIX)/$(MUMPS)/lib/libmpiseq.a\"
+endif
 endif
 
 ifeq ($(WITH_REFINER), 1)
@@ -1365,12 +1434,7 @@ FISTR_CMAKE_OPTS += \
 	-D CMAKE_Fortran_MODDIR_FLAG=-M
 endif
 
-FISTR_DEPS = $(FISTR) metis mumps trilinos
-ifneq ($(MPI), NONE)
-FISTR_DEPS += $(MPI_INST) parmetis
-endif
-
-$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR_DEPS)
+$(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) $(FISTR_DEPS)
 	(cd $(FISTR); mkdir build; cd build; cmake --version; \
 	echo "cmake $(FISTR_CMAKE_OPTS) .." > run_cmake.sh; \
 	sh run_cmake.sh; \
