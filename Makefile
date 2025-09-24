@@ -355,18 +355,35 @@ ifeq ($(COMPILER), NVIDIA)
   F90FPPFLAG ?= -Mpreprocess
 else
 ifeq ($(COMPILER), FUJITSU)
-  CC ?= fcc
-  CXX ?= FCC
-  FC ?= frt
+  ifeq ("$(shell which fcc)", "")
+    CC ?= fccpx
+  else
+    CC ?= fcc
+  endif
+  ifeq ("$(shell which FCC)", "")
+    CXX ?= FCCpx
+  else
+    CXX ?= FCC
+  endif
+  ifeq ("$(shell which frt)", "")
+    FC ?= frtpx
+  else
+    FC ?= frt
+  endif
   # check existence of compiler commands
   ifeq ("$(shell which $(CC))", "")
-    $(error $(CC) not found in PATH)
+    $(error neither fcc nor fccpx found in PATH)
   endif
   ifeq ("$(shell which $(CXX))", "")
-    $(error $(CXX) not found in PATH)
+    $(error neither FCC nor FCCpx found in PATH)
   endif
   ifeq ("$(shell which $(FC))", "")
-    $(error $(FC) not found in PATH)
+    $(error neither frt nor frtpx found in PATH)
+  endif
+  ifeq ($(WITH_SCOTCH), YES)
+    ifeq ($(CC), fccpx)
+      $(error cross compilation of scotch is not possible.)
+    endif
   endif
   ifeq ($(BUILD_TYPE), RELEASE)
     CFLAGS ?= -Kfast -Xg
@@ -486,9 +503,21 @@ else
       endif
     endif
     ifeq ($(COMPILER), FUJITSU)
-      MPICC ?= mpifcc
-      MPICXX ?= mpiFCC
-      MPIF90 ?= mpifrt
+      ifeq ("$(CC)", "fcc")
+        MPICC ?= mpifcc
+      else
+        MPICC ?= mpifccpx
+      endif
+      ifeq ("$(CXX)", "FCC")
+        MPICXX ?= mpiFCC
+      else
+        MPICXX ?= mpiFCCpx
+      endif
+      ifeq ("$(FC)", "frt")
+        MPIF90 ?= mpifrt
+      else
+        MPIF90 ?= mpifrtpx
+      endif
     endif
     MPICC ?= mpicc
     MPICXX ?= mpicxx
