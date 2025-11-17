@@ -82,7 +82,7 @@ LAPACK    = lapack-3.12.0
 SCALAPACK = scalapack-2.2.0
 ifeq ($(metisversion), 4)
   METIS     = metis-4.0.3
-  PARMETIS  = ParMetis-3.2.0-p1
+  PARMETIS  = ParMetis-3.2.0
 else
   METIS     = metis-5.1.0
   PARMETIS  = parmetis-4.0.3
@@ -1055,7 +1055,7 @@ metis: $(PREFIX)/$(PARMETIS)/lib/libmetis.a
 
 $(PARMETIS).tar.gz:
 ifeq ($(metisversion), 4)
-	wget https://ftp.mcs.anl.gov/pub/petsc/externalpackages/$@
+	wget https://mirror.math.princeton.edu/pub/gentoo/distfiles/ParMetis-3.2.0.tar.gz
 else
 	wget https://karypis.github.io/glaros/files/sw/parmetis/$@
 endif
