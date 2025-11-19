@@ -1366,7 +1366,8 @@ $(PREFIX)/$(FISTR)/bin/fistr1: $(FISTR) $(FISTR_DEPS)
 	FrontISTR_Makefile.conf > $(FISTR)/Makefile.conf
 ifeq ($(metisversion), 4)
 	perl -i -pe \
-	"if(/^METISINCDIR/){s!include!include/METISLib!;}" \
+	"if(/^METISINCDIR/){s!include!include/METISLib!;} \
+	if(/^HECMW_METIS_VER/){s!5!4!;}" \
 	$(FISTR)/Makefile.conf
 endif
 	(cd $(FISTR) && \
@@ -1413,7 +1414,8 @@ FISTR_CMAKE_OPTS = \
 ifeq ($(metisversion), 4)
 FISTR_CMAKE_OPTS += \
 	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include/METISLib \
-	-D METIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libmetis.a
+	-D METIS_LIBRARIES=$(PREFIX)/$(PARMETIS)/lib/libmetis.a \
+	-D METIS_VER_4=ON
 else
 FISTR_CMAKE_OPTS += \
 	-D METIS_INCLUDE_PATH=$(PREFIX)/$(PARMETIS)/include \
@@ -1435,6 +1437,10 @@ FISTR_CMAKE_OPTS += \
 else
 FISTR_CMAKE_OPTS += \
 	-D MUMPS_LIBRARIES=\"$(PREFIX)/$(MUMPS)/lib/libdmumps.a;$(PREFIX)/$(MUMPS)/lib/libmumps_common.a;$(PREFIX)/$(MUMPS)/lib/libpord.a\"
+endif
+ifeq ($(metisversion), 4)
+FISTR_CMAKE_OPTS += \
+	-D PARMETIS_VER_3=ON
 endif
 else
 FISTR_CMAKE_OPTS += \
